@@ -1,10 +1,12 @@
 // 認識系に使うパラメータ。基本触らない
-const boundaryYPosHeightRatio = 0.7;
-const boundaryYPosHeightThresh = 250;
+const boundaryYPosHeightRatio = 0.65;
+const boundaryYPosHeightThresh = 247;
 const boundaryXPosHeightRatio = 0.7;
-const boundaryXPosLeftRatio = 0.1;
-const boundaryXPosLeftThresh = 240;
-const boundaryXPosRightRatio = 0.975;
+const boundaryXPosLeftRatio = 0.03;
+const boundaryXPosLeftMinThresh = 240;
+const boundaryXPosLeftMaxThresh = 250;
+const boundaryXPosLeftMargin = 9;
+const boundaryXPosLeftFindCountRatio = 0.01;
 const boundaryXPosRightThresh = 240;
 const boundaryXPosRightGrayThresh = 215;
 export const searchHeightRatio = 0.04;
@@ -22,21 +24,39 @@ export function getBoundaryXPos(m: any) {
   let right = -1;
 
   const y = Math.floor(m.rows * boundaryXPosHeightRatio);
+  const leftFindCountThresh = Math.floor(
+    m.cols * boundaryXPosLeftFindCountRatio
+  );
+  let leftFindCount = 0;
   for (
-    let x = Math.floor(m.cols * boundaryXPosLeftRatio);
+    let x = Math.max(
+      boundaryXPosLeftMargin,
+      Math.floor(m.cols * boundaryXPosLeftRatio)
+    );
     x < m.cols * 0.5;
     x++
   ) {
     console.log(`${x}:${y} ${b.data[y * m.cols + x]}`);
-    if (b.data[y * m.cols + x] > boundaryXPosLeftThresh) {
-      left = x - 1;
-      break;
+    if (
+      b.data[y * m.cols + x] > boundaryXPosLeftMinThresh &&
+      b.data[y * m.cols + x] < boundaryXPosLeftMaxThresh
+    ) {
+      if (++leftFindCount >= leftFindCountThresh) {
+        left = x;
+        break;
+      }
+    } else {
+      leftFindCount = 0;
     }
+  }
+
+  if (left == -1) {
+    return [-1, -1];
   }
 
   let findDarkGray = false;
   for (
-    let x = Math.floor(m.cols * boundaryXPosRightRatio);
+    let x = Math.min(m.cols - 1, m.cols - left + leftFindCountThresh);
     x >= m.cols * 0.5;
     x--
   ) {

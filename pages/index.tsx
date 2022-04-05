@@ -77,7 +77,7 @@ const Home: NextPage = () => {
       console.log(`Input:${i} ${mat.cols}:${mat.rows} pixel`);
       if (i > 0) {
         if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
-          console.log('異なる解像度の画像が入力されています');
+          window.alert('異なる解像度の画像が入力されています');
           return;
         }
       }
@@ -91,7 +91,7 @@ const Home: NextPage = () => {
     console.log(`Left:${left} Right:${right}`);
     // 各座標取れない場合は処理終了
     if (width <= 0 || left <= 0 || right <= 0) {
-      console.log('境界の取得に失敗しました');
+      window.alert('境界の取得に失敗しました');
       console.log(`幅:${width} 左:${left} 右:${right}`);
       return;
     }
@@ -120,7 +120,7 @@ const Home: NextPage = () => {
       );
       templMat.delete();
       if (score < minTemplateMatchScore) {
-        console.log(
+        window.alert(
           `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
         );
         return;
@@ -129,10 +129,14 @@ const Home: NextPage = () => {
       boundaryY = getBoundaryYPos(srcMats[i], left);
       console.log(`${i} Bottom:${boundaryY}`);
       if (boundaryY <= 0) {
-        console.log(`${i + 1}番目の画像の境界(下)の取得に失敗しました`);
+        window.alert(`${i + 1}番目の画像の境界(下)の取得に失敗しました`);
+        return;
+      } else if (boundaryY < rect.y + searchHeight) {
+        window.alert(
+          `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
+        );
         return;
       }
-
       // 結合元は閉じるボタンまで入っているので、スキル枠までを切り抜き、これを結合元画像とする
       const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
       intMat.delete();
