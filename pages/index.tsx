@@ -1,7 +1,7 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import styles from '../styles/Home.module.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, Fragment } from 'react';
+import { Transition, Dialog } from '@headlessui/react';
 import {
   getBoundaryXPos,
   getBoundaryYPos,
@@ -42,10 +42,91 @@ const people = [
   },
 ];
 
+const WarningModal: React.VFC<{
+  setOpen: (open: boolean) => void;
+  open: boolean;
+}> = ({ open, setOpen }) => {
+  return (
+    <Transition.Root show={open} as={Fragment}>
+      <Dialog
+        as="div"
+        className="fixed z-10 inset-0 overflow-y-auto"
+        onClose={setOpen}
+      >
+        <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <Dialog.Overlay className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+          </Transition.Child>
+          {/* This element is to trick the browser into centering the modal contents. */}
+          <span
+            className="hidden sm:inline-block sm:align-middle sm:h-screen"
+            aria-hidden="true"
+          >
+            &#8203;
+          </span>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            enterTo="opacity-100 translate-y-0 sm:scale-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+            leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+          >
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle max-w-3xl w-full sm:p-6">
+              <div>
+                <div className="mt-3 sm:mt-5">
+                  <h2 className="text-2xl">注意点</h2>
+                  <div className="mt-4 text-sm text-gray-500">
+                    ※ 結合する画像の解像度は統一してください。 <br />※
+                    結合する順に画像の位置を調整してください。
+                    <br />※
+                    結合処理において、最下段のスキルを元に次画像結合位置を決めています。
+                    <br />
+                    最低1行分はスキルを被せて撮影して下さい。(下の赤枠参照)
+                    <ul role="list" className="flex justify-center mt-4">
+                      <li className="relative">
+                        <img
+                          src="https://media.discordapp.net/attachments/956400362644971530/961167272678920212/exsample1.png"
+                          alt=""
+                          className="object-contain pointer-events-none group-hover:opacity-75"
+                          style={{ maxHeight: '60vh' }}
+                        />
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-6">
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </Transition.Child>
+        </div>
+      </Dialog>
+    </Transition.Root>
+  );
+};
+
 const Home: NextPage = () => {
   const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
   const [images, setImages] = useState<ImageListType>([]);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     setImages(imageList);
@@ -172,27 +253,79 @@ const Home: NextPage = () => {
   const onDownload = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
     if (canvas) {
-      const data = canvas.toDataURL();
-      const tmpLink = document.createElement('a');
-      tmpLink.download = 'result.png';
-      tmpLink.href = data;
-      document.body.appendChild(tmpLink);
-      tmpLink.click();
-      document.body.removeChild(tmpLink);
+      canvas.toBlob((blob) => {
+        const link = document.createElement('a');
+        if (blob) {
+          link.href = URL.createObjectURL(blob);
+          link.download = 'result.png';
+          link.target = '_blank';
+          link.click();
+        }
+      }, 'image/png');
     }
   }, []);
+
+  const onShare = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
+    if (canvas) {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const shareData = {
+            title: 'レシート因子作成くん',
+            text: '「レシート因子作成くん」で作成されました！ ssc.kitachan.black',
+            url: 'https://ssc.kitachan.black/',
+            files: [
+              new File([blob], 'result.png', {
+                type: 'image/png',
+                lastModified: new Date().getTime(),
+              }),
+            ],
+          };
+          navigator.share(shareData);
+        }
+      }, 'image/png');
+    }
+  }, []);
+
+  const onMove = useCallback(
+    (index: number, direction: 'right' | 'left') => {
+      const target = images.find((image, idx) => index === idx);
+      const exceptTargetImages = images.filter((image, idx) => index !== idx);
+      const newImages = [];
+      if (target) {
+        for (let i = 0; i < exceptTargetImages.length; i++) {
+          newImages.push(exceptTargetImages[i]);
+          if (i === index) {
+            newImages.push(target);
+          }
+        }
+        setImages(newImages);
+      }
+    },
+    [images]
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <Head>
-        <title>レシート因子作成くん</title>
+        <title>レシート因子作成くんβ</title>
         <meta
           name="description"
           content="「ウマ娘詳細」画面の「継承タブ」の複数枚画像を1枚に結合するツールです"
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <Script
+        async
+        src="https://www.googletagmanager.com/gtag/js?id=UA-212558389-4"
+      />
+      <Script id="ga-script">{`window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+        
+            gtag('config', 'UA-212558389-4');`}</Script>
       <Script src="https://docs.opencv.org/4.5.5/opencv.js" />
+      <WarningModal open={modalOpen} setOpen={setModalOpen} />
       <ImageUploading
         multiple
         value={images}
@@ -221,12 +354,22 @@ const Home: NextPage = () => {
                     htmlFor="cover-photo"
                     className="block text-3xl font-medium text-gray-700 text-center"
                   >
-                    レシート因子作成くん
+                    レシート因子作成くんβ
                     <br />
                     <span className="text-sm text-gray-500">
-                      ※ 結合する画像の解像度は統一してください
+                      <b>「スキル画面」「チーム競技場のスコア情報画面」</b>
+                      にも対応しています。
                     </span>
                   </label>
+                  <div className="my-4 text-center">
+                    <button
+                      onClick={() => setModalOpen(true)}
+                      type="button"
+                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      注意点を表示する
+                    </button>
+                  </div>
                   <div
                     className={classNames(
                       'mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md',
@@ -301,7 +444,7 @@ const Home: NextPage = () => {
                           />
                         </div>
                         <p className="mt-2 block text-sm font-medium text-gray-900 truncate pointer-events-none">
-                          {image.file?.name}
+                          {index + 1}枚目の画像
                         </p>
                         <p className="block text-sm font-medium text-gray-500 pointer-events-none">
                           {Math.round(
@@ -313,10 +456,19 @@ const Home: NextPage = () => {
                           <button
                             onClick={() => onImageRemove(index)}
                             type="button"
-                            className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            className="mx-2 inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                           >
                             削除
                           </button>
+                          {index !== imageList.length - 1 && (
+                            <button
+                              onClick={() => onMove(index, 'right')}
+                              type="button"
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                              →
+                            </button>
+                          )}
                         </p>
                       </li>
                     ))}
@@ -343,28 +495,52 @@ const Home: NextPage = () => {
       >
         <div className="flex flex-col justify-center items-center">
           {created && (
-            <button
-              onClick={onDownload}
-              type="button"
-              style={{ width: 150, margin: 32 }}
-              className="disabled:opacity-50 ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              ダウンロードする
-            </button>
+            <div className="flex justify-center my-8">
+              <button
+                onClick={onDownload}
+                type="button"
+                style={{ width: 150 }}
+                className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                ダウンロードする
+              </button>
+              {typeof navigator.share !== 'undefined' && (
+                <button
+                  onClick={onShare}
+                  type="button"
+                  style={{ width: 150 }}
+                  className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  シェアする
+                </button>
+              )}
+            </div>
           )}
           <canvas
             id="dest-canvas"
             style={{ maxHeight: '90vh', width: 'auto', margin: '0 auto' }}
           />
           {created && (
-            <button
-              onClick={onDownload}
-              type="button"
-              style={{ width: 150, margin: 32 }}
-              className="disabled:opacity-50 ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              ダウンロードする
-            </button>
+            <div className="flex justify-center my-8">
+              <button
+                onClick={onDownload}
+                type="button"
+                style={{ width: 150 }}
+                className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                ダウンロードする
+              </button>
+              {typeof navigator.share !== 'undefined' && (
+                <button
+                  onClick={onShare}
+                  type="button"
+                  style={{ width: 150 }}
+                  className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  シェアする
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
