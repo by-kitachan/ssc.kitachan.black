@@ -155,7 +155,7 @@ const Home: NextPage = () => {
       const img = new Image();
       img.src = images[i].data_url;
       const mat = cv.imread(img);
-      console.log(`Input:${i} ${mat.cols}:${mat.rows} pixel`);
+      // console.log(`Input:${i} ${mat.cols}:${mat.rows} pixel`);
       if (i > 0) {
         if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
           window.alert('異なる解像度の画像が入力されています');
@@ -169,24 +169,24 @@ const Home: NextPage = () => {
     const width = src.cols;
     // スクロールバーが入らないスキルアイコンの両端を取得する(結構適当)
     const [left, right] = getBoundaryXPos(src);
-    console.log(`Left:${left} Right:${right}`);
+    // console.log(`Left:${left} Right:${right}`);
     // 各座標取れない場合は処理終了
     if (width <= 0 || left <= 0 || right <= 0) {
       window.alert('境界の取得に失敗しました');
-      console.log(`幅:${width} 左:${left} 右:${right}`);
+      // console.log(`幅:${width} 左:${left} 右:${right}`);
       return;
     }
     // スキルの最下段の座標取得
     // 「スキル枠背景 = LightGray、それより下の背景 = White」なので、それを用いて判断
     let boundaryY = getBoundaryYPos(src, left);
-    console.log(`0 Bottom:${boundaryY}`);
+    // console.log(`0 Bottom:${boundaryY}`);
     // 左上からスキルの最下段までを切り抜き
     let intMat = src.roi(new cv.Rect(0, 0, width, boundaryY));
 
     let totalY = boundaryY;
     // 2枚目以降の画像とのテンプレートマッチ用画像切り抜き用の高さ。大体スキル1行分
     const searchHeight = Math.floor(src.rows * searchHeightRatio);
-    console.log(`SearchHeight:${searchHeight}`);
+    // console.log(`SearchHeight:${searchHeight}`);
     // 2枚目以降
     for (let i = 1; i < srcMats.length; i++) {
       // スキル1行分切り抜き
@@ -206,9 +206,9 @@ const Home: NextPage = () => {
         );
         return;
       }
-      console.log(`${i} ${score} ${rect.x}:${rect.y}`);
+      // console.log(`${i} ${score} ${rect.x}:${rect.y}`);
       boundaryY = getBoundaryYPos(srcMats[i], left);
-      console.log(`${i} Bottom:${boundaryY}`);
+      // console.log(`${i} Bottom:${boundaryY}`);
       if (boundaryY <= 0) {
         window.alert(`${i + 1}番目の画像の境界(下)の取得に失敗しました`);
         return;
@@ -236,7 +236,7 @@ const Home: NextPage = () => {
       addMat.delete();
       // 結合元画像のスキル最下段の座標を覚えておく
       totalY += boundaryY - searchHeight - rect.y;
-      console.log(`TotalY:${totalY}`);
+      // console.log(`TotalY:${totalY}`);
     }
 
     for (let i = 0; i < srcMats.length; i++) {
@@ -265,6 +265,70 @@ const Home: NextPage = () => {
     }
   }, []);
 
+  const onCopy = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
+    const isSafari = /^((?!chrome|android).)*safari/i.test(
+      navigator?.userAgent
+    );
+    if (canvas) {
+      if (isSafari) {
+        navigator.clipboard
+          .write([
+            new ClipboardItem({
+              'image/png': new Promise(async (resolve, reject) => {
+                try {
+                  const blob = (await new Promise((resolve) => {
+                    canvas.toBlob((blob) => {
+                      if (blob) {
+                        resolve(blob);
+                      } else {
+                        reject();
+                      }
+                    });
+                  })) as Blob;
+                  if (blob) {
+                    resolve(new Blob([blob], { type: 'image/png' }));
+                  } else {
+                    reject();
+                  }
+                } catch (err) {
+                  reject(err);
+                }
+              }),
+            }),
+          ])
+          .then(() => {
+            alert('コピーしました。');
+          })
+          .catch((e) => {
+            console.log(e);
+            alert('コピーに失敗しました。');
+          });
+      } else {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            try {
+              navigator.clipboard
+                .write([
+                  new ClipboardItem({
+                    'image/png': blob,
+                  }),
+                ])
+                .then(() => {
+                  alert('コピーしました。');
+                })
+                .catch(() => {
+                  alert('コピーに失敗しました。');
+                });
+            } catch (e) {
+              alert('コピーに失敗しました。');
+            }
+          }
+        }, 'image/png');
+      }
+    }
+  }, []);
+
   const onShare = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
     if (canvas) {
@@ -272,8 +336,7 @@ const Home: NextPage = () => {
         if (blob) {
           const shareData = {
             title: 'レシート因子作成くん',
-            text: '「レシート因子作成くん」で作成されました！ ssc.kitachan.black',
-            url: 'https://ssc.kitachan.black/',
+            text: '「レシート因子作成くん」で作成されました！ #レシート因子 ssc.kitachan.black',
             files: [
               new File([blob], 'result.png', {
                 type: 'image/png',
@@ -305,15 +368,39 @@ const Home: NextPage = () => {
     [images]
   );
 
+  const title = 'レシート因子作成くんβ';
+  const description =
+    '「ウマ娘詳細」画面の「継承タブ」の複数枚画像を1枚に結合するツールです';
+  const siteUrl = 'https://ssc.kitachan.black';
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <Head>
-        <title>レシート因子作成くんβ</title>
-        <meta
-          name="description"
-          content="「ウマ娘詳細」画面の「継承タブ」の複数枚画像を1枚に結合するツールです"
-        />
+        <title>{title}</title>
+        <meta name="description" content={description} />
         <link rel="icon" href="/favicon.ico" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
+        <meta name="application-name" content={title} />
+        <meta name="description" content={description} />
+        <meta name="thumbnail" content={`${siteUrl}/webclip.png`} />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/webclip.png" />
+        <link rel="icon" type="image/png" href="/webclip.png" />
+        <meta property="og:url" content={siteUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={title} />
+        <meta property="og:image" content={`${siteUrl}/ogp.png`} />
+        <meta property="og:description" content={description} />
+        <meta property="og:site_name" content={title} />
+        <meta property="og:locale" content="ja_JP" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@" />
+        <meta name="twitter:url" content={siteUrl} />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={`${siteUrl}/ogp.png`} />
       </Head>
       <Script
         async
@@ -499,17 +586,25 @@ const Home: NextPage = () => {
               <button
                 onClick={onDownload}
                 type="button"
-                style={{ width: 150 }}
-                className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                style={{ width: 130 }}
+                className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 ダウンロードする
+              </button>
+              <button
+                onClick={onCopy}
+                type="button"
+                style={{ width: 100 }}
+                className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                コピーする
               </button>
               {typeof navigator.share !== 'undefined' && (
                 <button
                   onClick={onShare}
                   type="button"
-                  style={{ width: 150 }}
-                  className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  style={{ width: 100 }}
+                  className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   シェアする
                 </button>
@@ -525,17 +620,25 @@ const Home: NextPage = () => {
               <button
                 onClick={onDownload}
                 type="button"
-                style={{ width: 150 }}
-                className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                style={{ width: 130 }}
+                className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 ダウンロードする
+              </button>
+              <button
+                onClick={onCopy}
+                type="button"
+                style={{ width: 100 }}
+                className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                コピーする
               </button>
               {typeof navigator.share !== 'undefined' && (
                 <button
                   onClick={onShare}
                   type="button"
-                  style={{ width: 150 }}
-                  className="mx-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  style={{ width: 100 }}
+                  className="mx-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   シェアする
                 </button>
