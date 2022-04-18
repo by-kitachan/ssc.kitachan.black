@@ -32,6 +32,7 @@ const people = [
     imageUrl:
       'https://pbs.twimg.com/profile_images/1461309767939682304/K3pWuFly_400x400.jpg',
     twitterUrl: 'https://twitter.com/aoneko_uma',
+    hp: 'https://aoneko-uma.fanbox.cc/',
   },
   {
     name: 'おりばー',
@@ -39,6 +40,7 @@ const people = [
     imageUrl:
       'https://pbs.twimg.com/profile_images/1395631397247717379/YGOCetpV_400x400.jpg',
     twitterUrl: 'https://twitter.com/oliver_uma',
+    hp: 'https://youtube.com/c/kitachan',
   },
 ];
 
@@ -143,6 +145,21 @@ const Home: NextPage = () => {
       }
     }
   }, [errors]);
+
+  useEffect(() => {
+    document.addEventListener('paste', (e) => {
+      const item = e.clipboardData?.items[0];
+      const file = item?.getAsFile();
+      if (file?.type.indexOf('image') === 0) {
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+          const image = { data_url: reader.result, file: file };
+          setImages((prv) => [...prv, image]);
+        });
+        reader.readAsDataURL(file);
+      }
+    });
+  }, []);
 
   const onCreate = useCallback(() => {
     // @ts-ignore
@@ -704,6 +721,30 @@ const Home: NextPage = () => {
                             </svg>
                           </a>
                         </li>
+                        {person.hp && (
+                          <li>
+                            <a
+                              href={person.hp}
+                              className="text-gray-400 hover:text-gray-500"
+                            >
+                              <span className="sr-only">HP</span>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                                />
+                              </svg>
+                            </a>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   </div>
