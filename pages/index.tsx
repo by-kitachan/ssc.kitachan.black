@@ -709,6 +709,8 @@ const Home: NextPage = () => {
                           <a
                             href={person.twitterUrl}
                             className="text-gray-400 hover:text-gray-500"
+                            target="_blank"
+                            rel="noopener noreferrer"
                           >
                             <span className="sr-only">Twitter</span>
                             <svg
@@ -726,6 +728,8 @@ const Home: NextPage = () => {
                             <a
                               href={person.hp}
                               className="text-gray-400 hover:text-gray-500"
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
                               <span className="sr-only">HP</span>
                               <svg
