@@ -128,6 +128,7 @@ const Home: NextPage = () => {
   const [created, setCreated] = useState(false);
   const [images, setImages] = useState<ImageListType>([]);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     setImages(imageList);
@@ -243,8 +244,9 @@ const Home: NextPage = () => {
       srcMats[i].delete();
     }
 
+    const retRect = deleteSideMargin ? new cv.Rect(border.x, 0, border.width, totalY) : new cv.Rect(0, 0, width, totalY);
     // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
-    const retMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
+    const retMat = intMat.roi(retRect);
     intMat.delete();
     cv.imshow('dest-canvas', retMat);
     setCreated(true);
