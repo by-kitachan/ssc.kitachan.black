@@ -3,16 +3,17 @@ import Head from 'next/head';
 import { useCallback, useEffect, useState, Fragment } from 'react';
 import { Transition, Dialog } from '@headlessui/react';
 import {
-  getBoundaryXPos,
-  getBoundaryYPos,
+  getBorder,
   minTemplateMatchScore,
   searchHeightRatio,
   templateMatch,
   vconcat,
+  getScrollBarRect,
 } from '../utils/combine';
 import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
 import Script from 'next/script';
+import { Switch } from '@headlessui/react';
 
 function classNames(...classes: any) {
   return classes.filter(Boolean).join(' ');
@@ -124,11 +125,94 @@ const WarningModal: React.VFC<{
   );
 };
 
+function Toggle({
+  text,
+  enabled,
+  setEnabled,
+}: {
+  text: string;
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
+}) {
+  return (
+    <Switch.Group as="div" className="flex items-center justify-between">
+      <span className="flex-grow flex flex-col">
+        <Switch.Label
+          as="span"
+          className="text-sm font-medium text-gray-900"
+          passive
+        >
+          {text}
+        </Switch.Label>
+      </span>
+      <Switch
+        checked={enabled}
+        onChange={setEnabled}
+        className={classNames(
+          enabled ? 'bg-indigo-600' : 'bg-gray-200',
+          'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+        )}
+      >
+        <span className="sr-only">Use setting</span>
+        <span
+          className={classNames(
+            enabled ? 'translate-x-5' : 'translate-x-0',
+            'pointer-events-none relative inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200'
+          )}
+        >
+          <span
+            className={classNames(
+              enabled
+                ? 'opacity-0 ease-out duration-100'
+                : 'opacity-100 ease-in duration-200',
+              'absolute inset-0 h-full w-full flex items-center justify-center transition-opacity'
+            )}
+            aria-hidden="true"
+          >
+            <svg
+              className="h-3 w-3 text-gray-400"
+              fill="none"
+              viewBox="0 0 12 12"
+            >
+              <path
+                d="M4 8l2-2m0 0l2-2M6 6L4 4m2 2l2 2"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span
+            className={classNames(
+              enabled
+                ? 'opacity-100 ease-in duration-200'
+                : 'opacity-0 ease-out duration-100',
+              'absolute inset-0 h-full w-full flex items-center justify-center transition-opacity'
+            )}
+            aria-hidden="true"
+          >
+            <svg
+              className="h-3 w-3 text-indigo-600"
+              fill="currentColor"
+              viewBox="0 0 12 12"
+            >
+              <path d="M3.707 5.293a1 1 0 00-1.414 1.414l1.414-1.414zM5 8l-.707.707a1 1 0 001.414 0L5 8zm4.707-3.293a1 1 0 00-1.414-1.414l1.414 1.414zm-7.414 2l2 2 1.414-1.414-2-2-1.414 1.414zm3.414 2l4-4-1.414-1.414-4 4 1.414 1.414z" />
+            </svg>
+          </span>
+        </span>
+      </Switch>
+    </Switch.Group>
+  );
+}
+
 const Home: NextPage = () => {
   const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
   const [images, setImages] = useState<ImageListType>([]);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
+  const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -169,7 +253,6 @@ const Home: NextPage = () => {
     // @ts-ignore
     const cv = window.cv;
     // 結合処理入り口
-    // TODO: returnしている所はWindows版でエラーにしている箇所。適切なエラーハンドリングお願いします。
     const srcMats = [];
     // imgタグのidから画像読み取り(imgタグにwidthやheight指定あるとリサイズされてしまうので注意)
     for (let i = 0; i < images.length; i++) {
@@ -188,24 +271,35 @@ const Home: NextPage = () => {
     // 1枚目を基準画像とする
     const src = srcMats[0];
     const width = src.cols;
-    // スクロールバーが入らないスキルアイコンの両端を取得する(結構適当)
-    const [left, right] = getBoundaryXPos(src);
-    // console.log(`Left:${left} Right:${right}`);
+    // 左右切り落とし+下端の座標取得
+    const border = getBorder(src);
+    const height = border.height;
+    const left = border.x;
+    const right = left + Math.floor(border.width * 0.95);
+    // console.log(`幅:${width} 高:${border.height} 左:${left} 右:${right}`);
     // 各座標取れない場合は処理終了
-    if (width <= 0 || left <= 0 || right <= 0) {
+    if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
       window.alert('境界の取得に失敗しました');
-      // console.log(`幅:${width} 左:${left} 右:${right}`);
+      // console.log(`幅:${width} 高:${height} 左:${left} 右:${right}`);
       return;
     }
-    // スキルの最下段の座標取得
-    // 「スキル枠背景 = LightGray、それより下の背景 = White」なので、それを用いて判断
-    let boundaryY = getBoundaryYPos(src, left);
-    // console.log(`0 Bottom:${boundaryY}`);
-    // 左上からスキルの最下段までを切り抜き
-    let intMat = src.roi(new cv.Rect(0, 0, width, boundaryY));
-
-    let totalY = boundaryY;
-    // 2枚目以降の画像とのテンプレートマッチ用画像切り抜き用の高さ。大体スキル1行分
+    if (deleteScrollBar) {
+      const scrollBarRect = getScrollBarRect(src, border);
+      for (let i = 0; i < srcMats.length; i++) {
+        cv.rectangle(
+          srcMats[i],
+          new cv.Point(scrollBarRect.x, scrollBarRect.y),
+          new cv.Point(
+            scrollBarRect.x + scrollBarRect.width,
+            scrollBarRect.y + scrollBarRect.height
+          ),
+          [242, 243, 242, 255],
+          -1
+        );
+      }
+    }
+    let intMat = src.roi(new cv.Rect(0, 0, width, height));
+    let totalY = height;
     const searchHeight = Math.floor(src.rows * searchHeightRatio);
     // console.log(`SearchHeight:${searchHeight}`);
     // 2枚目以降
@@ -218,7 +312,7 @@ const Home: NextPage = () => {
       const [score, rect] = templateMatch(
         srcMats[i],
         templMat,
-        new cv.Rect(left, 0, right - left, srcMats[i].rows)
+        new cv.Rect(left, 0, right - left, height)
       );
       templMat.delete();
       if (score < minTemplateMatchScore) {
@@ -228,27 +322,15 @@ const Home: NextPage = () => {
         return;
       }
       // console.log(`${i} ${score} ${rect.x}:${rect.y}`);
-      boundaryY = getBoundaryYPos(srcMats[i], left);
-      // console.log(`${i} Bottom:${boundaryY}`);
-      if (boundaryY <= 0) {
-        window.alert(`${i + 1}番目の画像の境界(下)の取得に失敗しました`);
-        return;
-      } else if (boundaryY < rect.y + searchHeight) {
-        window.alert(
-          `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
-        );
-        return;
-      }
-      // 結合元は閉じるボタンまで入っているので、スキル枠までを切り抜き、これを結合元画像とする
+
       const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
       intMat.delete();
-      // 結合対象画像をテンプレートマッチ結果から切り抜き
       const addMat = srcMats[i].roi(
         new cv.Rect(
           0,
           rect.y + searchHeight,
           width,
-          boundaryY - rect.y + searchHeight
+          height - rect.y + searchHeight
         )
       );
 
@@ -256,7 +338,7 @@ const Home: NextPage = () => {
       intMat = vconcat(tmpMat, addMat);
       addMat.delete();
       // 結合元画像のスキル最下段の座標を覚えておく
-      totalY += boundaryY - searchHeight - rect.y;
+      totalY += height - searchHeight - rect.y;
       // console.log(`TotalY:${totalY}`);
     }
 
@@ -264,12 +346,15 @@ const Home: NextPage = () => {
       srcMats[i].delete();
     }
 
+    const retRect = deleteSideMargin
+      ? new cv.Rect(border.x, 0, border.width, totalY)
+      : new cv.Rect(0, 0, width, totalY);
     // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
-    const retMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
+    const retMat = intMat.roi(retRect);
     intMat.delete();
     cv.imshow('dest-canvas', retMat);
     setCreated(true);
-  }, [images]);
+  }, [images, deleteScrollBar, deleteSideMargin]);
 
   const onDownload = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
@@ -601,7 +686,26 @@ const Home: NextPage = () => {
           );
         }}
       </ImageUploading>
-      <div className="text-center mt-8">
+      <div className="my-6 lg:w-1/3 mx-auto p-6 border-2 border-dashed rounded-md">
+        <h2 className="mx-auto text-gray-500 border-gray-300 border-b">
+          オプション
+        </h2>
+        <div className="my-3 mx-auto">
+          <Toggle
+            text="左右を切り落とす"
+            enabled={deleteSideMargin}
+            setEnabled={setDeleteSideMargin}
+          />
+        </div>
+        <div className="mt-3 mx-auto">
+          <Toggle
+            text="スクロールバーを消去する"
+            enabled={deleteScrollBar}
+            setEnabled={setDeleteScrollBar}
+          />
+        </div>
+      </div>
+      <div className="text-center mt-4">
         <button
           onClick={onCreate}
           type="button"
