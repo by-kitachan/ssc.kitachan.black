@@ -8,6 +8,7 @@ import {
   searchHeightRatio,
   templateMatch,
   vconcat,
+  getScrollBarRect,
 } from '../utils/combine';
 import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
@@ -129,6 +130,7 @@ const Home: NextPage = () => {
   const [images, setImages] = useState<ImageListType>([]);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
+  const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     setImages(imageList);
@@ -195,7 +197,21 @@ const Home: NextPage = () => {
       // console.log(`幅:${width} 高:${height} 左:${left} 右:${right}`);
       return;
     }
-
+    if (deleteScrollBar) {
+      const scrollBarRect = getScrollBarRect(src, border);
+      for (let i = 0; i < srcMats.length; i++) {
+        cv.rectangle(
+          srcMats[i],
+          new cv.Point(scrollBarRect.x, scrollBarRect.y),
+          new cv.Point(
+            scrollBarRect.x + scrollBarRect.width,
+            scrollBarRect.y + scrollBarRect.height
+          ),
+          [242, 243, 242, 255],
+          -1
+        );
+      }
+    }
     let intMat = src.roi(new cv.Rect(0, 0, width, height));
     let totalY = height;
     const searchHeight = Math.floor(src.rows * searchHeightRatio);
@@ -244,7 +260,9 @@ const Home: NextPage = () => {
       srcMats[i].delete();
     }
 
-    const retRect = deleteSideMargin ? new cv.Rect(border.x, 0, border.width, totalY) : new cv.Rect(0, 0, width, totalY);
+    const retRect = deleteSideMargin
+      ? new cv.Rect(border.x, 0, border.width, totalY)
+      : new cv.Rect(0, 0, width, totalY);
     // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
     const retMat = intMat.roi(retRect);
     intMat.delete();

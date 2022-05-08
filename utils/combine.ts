@@ -78,6 +78,63 @@ export function getBorder(m: any) {
   return new cv.Rect(borderX, 0, m.cols - borderX * 2, borderBottom);
 }
 
+export function getScrollBarRect(m: any, border: any) {
+  // @ts-ignore
+  const cv = window.cv;
+  const hsvMask = new cv.Mat();
+  const hsv = new cv.Mat();
+
+  const crop = m.roi(border);
+  cv.cvtColor(crop, hsv, cv.COLOR_BGR2HSV_FULL, 0);
+  const low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 0, 0, 0]);
+  const high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [255, 60, 230, 0]);
+  cv.inRange(hsv, low, high, hsvMask);
+
+  let top = -1;
+  let bottom = -1;
+  let findCntLimit =
+    Math.floor(border.width * 0.99) - Math.floor(border.width * 0.98);
+  for (let y = hsvMask.rows - 1; y >= 0; y--) {
+    let findBlackCnt = 0;
+    for (
+      let x = Math.floor(border.width * 0.98);
+      x < Math.floor(border.width * 0.99);
+      x++
+    ) {
+      if (bottom == -1) {
+        if (hsvMask.data[y * hsvMask.cols + x] == White) {
+          bottom = y + 10;
+          break;
+        }
+      } else if (hsvMask.data[y * hsvMask.cols + x] == Black) {
+        if (++findBlackCnt >= findCntLimit) {
+          top = y - 4;
+          break;
+        }
+      }
+    }
+    if (top > 0) {
+      break;
+    }
+  }
+  const width = Math.floor(hsvMask.cols * 0.02) + 2;
+  const scrollBarLeft =
+    Math.floor(border.width * 0.98) + Math.floor((m.cols - border.width) / 2);
+
+  high.delete();
+  low.delete();
+  crop.delete();
+  hsv.delete();
+  hsvMask.delete();
+
+  return new cv.Rect(
+    scrollBarLeft - Math.floor(width / 2),
+    top,
+    width,
+    bottom - top
+  );
+}
+
 // テンプレートマッチ
 // グレースケール化して、一致箇所を探す
 // rectは検索範囲を狭める(スループット向上)ために使用
