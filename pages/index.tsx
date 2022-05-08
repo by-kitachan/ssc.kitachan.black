@@ -131,7 +131,11 @@ const Home: NextPage = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
-    setImages(imageList);
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      setImages(imageList.reverse());
+    } else {
+      setImages(imageList);
+    }
   };
 
   useEffect(() => {
@@ -460,16 +464,27 @@ const Home: NextPage = () => {
                   >
                     レシート因子作成くんβ
                     <br />
-                    <span className="text-sm text-gray-500">
+                    <p
+                      className="text-sm text-gray-500 mt-4"
+                      style={{ lineHeight: '1.4rem' }}
+                    >
                       <b>「スキル画面」「チーム競技場のスコア情報画面」</b>
                       にも対応しています。
-                    </span>
+                    </p>
                   </label>
                   <div className="my-4 text-center">
+                    <a
+                      href="https://kitachan.black/11b8ebd4519e4fca82304b4e4ccf3d9c"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      作成例はこちら
+                    </a>
                     <button
                       onClick={() => setModalOpen(true)}
                       type="button"
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       注意点を表示する
                     </button>
@@ -508,6 +523,9 @@ const Home: NextPage = () => {
                           または ドラッグ&ドロップ
                         </p>
                       </div>
+                      <p className="text-xs text-gray-500">
+                        もしくは クリップボードからペースト
+                      </p>
                       <p className="text-xs text-gray-500">
                         PNG, JPG（最大10MBまで）
                       </p>
@@ -672,8 +690,8 @@ const Home: NextPage = () => {
               <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
                 ツール制作関係者
               </h2>
-              <p className="text-xl text-gray-500">
-                このツールは「帝王塾」で企画、作成されました。
+              <p className="text-md text-gray-500">
+                このツールは「帝王塾」で企画されました。
                 <br />
                 入塾希望者は
                 <a
