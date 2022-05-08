@@ -1,91 +1,81 @@
 // 認識系に使うパラメータ。基本触らない
-const boundaryYPosHeightRatio = 0.65;
-const boundaryYPosHeightThresh = 247;
-const boundaryXPosHeightRatio = 0.7;
-const boundaryXPosLeftRatio = 0.03;
-const boundaryXPosLeftMinThresh = 240;
-const boundaryXPosLeftMaxThresh = 250;
-const boundaryXPosLeftMargin = 9;
-const boundaryXPosLeftFindCountRatio = 0.01;
-const boundaryXPosRightThresh = 240;
-const boundaryXPosRightGrayThresh = 215;
 export const searchHeightRatio = 0.04;
 export const minTemplateMatchScore = 0.5;
 
-// テンプレートマッチに使用する左右の座標を計算
-// グレースケール化して色見て判断
-// 右はスクロールバーを超えるために、スクロールバーを見つけたかのフラグ(findDarkGray)を使用
-export function getBoundaryXPos(m: any) {
+const Black = 0;
+const White = 255;
+
+export function getBorder(m: any) {
   // @ts-ignore
   const cv = window.cv;
-  let b = new cv.Mat();
-  cv.cvtColor(m, b, cv.COLOR_RGBA2GRAY, 0);
-  let left = -1;
-  let right = -1;
+  const hsvMask = new cv.Mat();
+  const hsv = new cv.Mat();
 
-  const y = Math.floor(m.rows * boundaryXPosHeightRatio);
-  const leftFindCountThresh = Math.floor(
-    m.cols * boundaryXPosLeftFindCountRatio
-  );
-  let leftFindCount = 0;
-  for (
-    let x = Math.max(
-      boundaryXPosLeftMargin,
-      Math.floor(m.cols * boundaryXPosLeftRatio)
-    );
-    x < m.cols * 0.5;
-    x++
-  ) {
-    console.log(`${x}:${y} ${b.data[y * m.cols + x]}`);
-    if (
-      b.data[y * m.cols + x] > boundaryXPosLeftMinThresh &&
-      b.data[y * m.cols + x] < boundaryXPosLeftMaxThresh
-    ) {
-      if (++leftFindCount >= leftFindCountThresh) {
-        left = x;
+  cv.cvtColor(m, hsv, cv.COLOR_BGR2HSV_FULL, 0);
+  const low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 0, 0, 0]);
+  const high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [255, 255, 245, 0]);
+  cv.inRange(hsv, low, high, hsvMask);
+
+  let posCounts: { [pos: number]: number } = {};
+  let x;
+  let y;
+
+  // console.log(`m ${m.cols}:${m.rows}`);
+  // console.log(`hsvMask ${hsvMask.cols}:${hsvMask.rows}`);
+  for (y = Math.floor(m.rows * 0.5); y < Math.floor(m.rows * 0.85); y++) {
+    let findWhite = false;
+    for (x = 1; x < Math.floor(m.cols / 2); x++) {
+      // console.log(`${x}:${y} ${hsvMask.data[y * m.cols + x]}`);
+      if (!findWhite && hsvMask.data[y * m.cols + x] == White) {
+        findWhite = true;
+      } else if (findWhite && hsvMask.data[y * m.cols + x] == Black) {
+        if (posCounts[x] == null) {
+          posCounts[x] = 1;
+        } else {
+          posCounts[x]++;
+        }
         break;
       }
-    } else {
-      leftFindCount = 0;
     }
   }
+  const mode = (dic: { [x: number]: number }): number => {
+    let maxCounter = 0;
+    let now = -1;
 
-  if (left == -1) {
-    return [-1, -1];
-  }
+    Object.entries(dic).forEach(([key, value]) => {
+      if (value > maxCounter) {
+        maxCounter = value;
+        now = Number(key);
+      }
+    });
+    return now;
+  };
+  const borderX = mode(posCounts);
+  // console.log(`borderX:${borderX}`);
 
-  let findDarkGray = false;
-  for (
-    let x = Math.min(m.cols - 1, m.cols - left + leftFindCountThresh);
-    x >= m.cols * 0.5;
-    x--
-  ) {
-    if (b.data[y * m.cols + x] < boundaryXPosRightGrayThresh && !findDarkGray) {
-      findDarkGray = true;
+  let borderBottom = 0;
+  posCounts = {};
+
+  for (y = Math.floor(m.rows * 0.7); y < Math.floor(m.rows * 0.95); y++) {
+    let findWhite = false;
+    for (x = borderX + 3; x < Math.floor(m.cols - borderX - 3); x++) {
+      if (hsvMask.data[y * m.cols + x] == White) {
+        findWhite = true;
+        break;
+      }
     }
-    if (findDarkGray && b.data[y * m.cols + x] > boundaryXPosRightThresh) {
-      right = x;
+    if (!findWhite) {
+      borderBottom = y - 1;
       break;
     }
   }
-  b.delete();
-  return [left, right];
-}
 
-// 画像毎のスキル最下段を取得
-// グレースケール化して色見て判断
-export function getBoundaryYPos(m: any, x: any) {
-  // @ts-ignore
-  const cv = window.cv;
-  let b = new cv.Mat();
-  cv.cvtColor(m, b, cv.COLOR_RGBA2GRAY, 0);
-  for (let y = Math.floor(m.rows * boundaryYPosHeightRatio); y < m.rows; y++) {
-    if (b.data[y * m.cols + x] > boundaryYPosHeightThresh) {
-      return y;
-    }
-  }
-  b.delete();
-  return -1;
+  high.delete();
+  low.delete();
+  hsv.delete();
+  hsvMask.delete();
+
+  return new cv.Rect(borderX, 0, m.cols - borderX * 2, borderBottom);
 }
 
 // テンプレートマッチ

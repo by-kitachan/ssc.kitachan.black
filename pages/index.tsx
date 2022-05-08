@@ -3,8 +3,7 @@ import Head from 'next/head';
 import { useCallback, useEffect, useState, Fragment } from 'react';
 import { Transition, Dialog } from '@headlessui/react';
 import {
-  getBoundaryXPos,
-  getBoundaryYPos,
+  getBorder,
   minTemplateMatchScore,
   searchHeightRatio,
   templateMatch,
@@ -165,7 +164,6 @@ const Home: NextPage = () => {
     // @ts-ignore
     const cv = window.cv;
     // 結合処理入り口
-    // TODO: returnしている所はWindows版でエラーにしている箇所。適切なエラーハンドリングお願いします。
     const srcMats = [];
     // imgタグのidから画像読み取り(imgタグにwidthやheight指定あるとリサイズされてしまうので注意)
     for (let i = 0; i < images.length; i++) {
@@ -184,24 +182,21 @@ const Home: NextPage = () => {
     // 1枚目を基準画像とする
     const src = srcMats[0];
     const width = src.cols;
-    // スクロールバーが入らないスキルアイコンの両端を取得する(結構適当)
-    const [left, right] = getBoundaryXPos(src);
-    // console.log(`Left:${left} Right:${right}`);
+    // 左右切り落とし+下端の座標取得
+    const border = getBorder(src);
+    const height = border.height;
+    const left = border.x;
+    const right = left + Math.floor(border.width * 0.95);
+    // console.log(`幅:${width} 高:${border.height} 左:${left} 右:${right}`);
     // 各座標取れない場合は処理終了
-    if (width <= 0 || left <= 0 || right <= 0) {
+    if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
       window.alert('境界の取得に失敗しました');
-      // console.log(`幅:${width} 左:${left} 右:${right}`);
+      // console.log(`幅:${width} 高:${height} 左:${left} 右:${right}`);
       return;
     }
-    // スキルの最下段の座標取得
-    // 「スキル枠背景 = LightGray、それより下の背景 = White」なので、それを用いて判断
-    let boundaryY = getBoundaryYPos(src, left);
-    // console.log(`0 Bottom:${boundaryY}`);
-    // 左上からスキルの最下段までを切り抜き
-    let intMat = src.roi(new cv.Rect(0, 0, width, boundaryY));
 
-    let totalY = boundaryY;
-    // 2枚目以降の画像とのテンプレートマッチ用画像切り抜き用の高さ。大体スキル1行分
+    let intMat = src.roi(new cv.Rect(0, 0, width, height));
+    let totalY = height;
     const searchHeight = Math.floor(src.rows * searchHeightRatio);
     // console.log(`SearchHeight:${searchHeight}`);
     // 2枚目以降
@@ -214,7 +209,7 @@ const Home: NextPage = () => {
       const [score, rect] = templateMatch(
         srcMats[i],
         templMat,
-        new cv.Rect(left, 0, right - left, srcMats[i].rows)
+        new cv.Rect(left, 0, right - left, height)
       );
       templMat.delete();
       if (score < minTemplateMatchScore) {
@@ -224,27 +219,15 @@ const Home: NextPage = () => {
         return;
       }
       // console.log(`${i} ${score} ${rect.x}:${rect.y}`);
-      boundaryY = getBoundaryYPos(srcMats[i], left);
-      // console.log(`${i} Bottom:${boundaryY}`);
-      if (boundaryY <= 0) {
-        window.alert(`${i + 1}番目の画像の境界(下)の取得に失敗しました`);
-        return;
-      } else if (boundaryY < rect.y + searchHeight) {
-        window.alert(
-          `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
-        );
-        return;
-      }
-      // 結合元は閉じるボタンまで入っているので、スキル枠までを切り抜き、これを結合元画像とする
+
       const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
       intMat.delete();
-      // 結合対象画像をテンプレートマッチ結果から切り抜き
       const addMat = srcMats[i].roi(
         new cv.Rect(
           0,
           rect.y + searchHeight,
           width,
-          boundaryY - rect.y + searchHeight
+          height - rect.y + searchHeight
         )
       );
 
@@ -252,7 +235,7 @@ const Home: NextPage = () => {
       intMat = vconcat(tmpMat, addMat);
       addMat.delete();
       // 結合元画像のスキル最下段の座標を覚えておく
-      totalY += boundaryY - searchHeight - rect.y;
+      totalY += height - searchHeight - rect.y;
       // console.log(`TotalY:${totalY}`);
     }
 
