@@ -9,6 +9,8 @@ import {
   templateMatch,
   vconcat,
   getScrollBarRect,
+  CombineDirection,
+  combineSimple,
 } from '../utils/combine';
 import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
@@ -206,6 +208,15 @@ function Toggle({
   );
 }
 
+const Layout = {
+  Vertical: 0,
+  Horizontal: 1,
+  Pedigree: 2,
+  SimpleVertical: 3,
+  SimpleHorizontal: 4,
+} as const;
+type Layout = typeof Layout[keyof typeof Layout];
+
 const Home: NextPage = () => {
   const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
@@ -213,6 +224,7 @@ const Home: NextPage = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
   const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
+  const [layout, setLayout] = useState<Layout>(Layout.Vertical);
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -252,109 +264,126 @@ const Home: NextPage = () => {
   const onCreate = useCallback(() => {
     // @ts-ignore
     const cv = window.cv;
-    // 結合処理入り口
+
     const srcMats = [];
-    // imgタグのidから画像読み取り(imgタグにwidthやheight指定あるとリサイズされてしまうので注意)
-    for (let i = 0; i < images.length; i++) {
-      const img = new Image();
-      img.src = images[i].data_url;
-      const mat = cv.imread(img);
-      // console.log(`Input:${i} ${mat.cols}:${mat.rows} pixel`);
-      if (i > 0) {
-        if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
-          window.alert('異なる解像度の画像が入力されています');
+    let retMat;
+    try {
+      for (let i = 0; i < images.length; i++) {
+        const img = new Image();
+        img.src = images[i].data_url;
+        const mat = cv.imread(img);
+        if (i > 0) {
+          if (
+            layout == Layout.Vertical ||
+            layout == Layout.Horizontal ||
+            layout == Layout.Pedigree
+          ) {
+            if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
+              window.alert('異なる解像度の画像が入力されています');
+              mat.delete();
+              return;
+            }
+          }
+        }
+        srcMats.push(mat);
+      }
+      // 1枚目を基準画像とする
+      const src = srcMats[0];
+      if (layout == Layout.SimpleVertical) {
+        retMat = combineSimple(srcMats, CombineDirection.Vertical);
+      } else if (layout == Layout.SimpleHorizontal) {
+        retMat = combineSimple(srcMats, CombineDirection.Horizontal);
+      } else {
+        const width = src.cols;
+        // 左右切り落とし+下端の座標取得
+        const border = getBorder(src);
+        const height = border.height;
+        const left = border.x;
+        const right = left + Math.floor(border.width * 0.95);
+
+        // 各座標取れない場合は処理終了
+        if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
+          window.alert('境界の取得に失敗しました');
           return;
         }
+        if (deleteScrollBar) {
+          const scrollBarRect = getScrollBarRect(src, border);
+          for (let i = 0; i < srcMats.length; i++) {
+            cv.rectangle(
+              srcMats[i],
+              new cv.Point(scrollBarRect.x, scrollBarRect.y),
+              new cv.Point(
+                scrollBarRect.x + scrollBarRect.width,
+                scrollBarRect.y + scrollBarRect.height
+              ),
+              [242, 243, 242, 255],
+              -1
+            );
+          }
+        }
+        let intMat = src.roi(new cv.Rect(0, 0, width, height));
+        let totalY = height;
+        const searchHeight = Math.floor(src.rows * searchHeightRatio);
+
+        // 2枚目以降
+        for (let i = 1; i < srcMats.length; i++) {
+          // スキル1行分切り抜き
+          let templMat = intMat.roi(
+            new cv.Rect(left, totalY - searchHeight, right - left, searchHeight)
+          );
+          // スキル1行分の一致箇所検索
+          const [score, rect] = templateMatch(
+            srcMats[i],
+            templMat,
+            new cv.Rect(left, 0, right - left, height)
+          );
+          templMat.delete();
+          if (score < minTemplateMatchScore) {
+            window.alert(
+              `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
+            );
+            intMat.delete();
+            return;
+          }
+
+          const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
+          const addMat = srcMats[i].roi(
+            new cv.Rect(
+              0,
+              rect.y + searchHeight,
+              width,
+              height - rect.y + searchHeight
+            )
+          );
+
+          // 垂直結合
+          intMat.delete();
+          intMat = vconcat(tmpMat, addMat);
+          addMat.delete();
+          tmpMat.delete();
+          // 結合元画像のスキル最下段の座標を覚えておく
+          totalY += height - searchHeight - rect.y;
+        }
+
+        const retRect = deleteSideMargin
+          ? new cv.Rect(border.x, 0, border.width, totalY)
+          : new cv.Rect(0, 0, width, totalY);
+        // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
+        retMat = intMat.roi(retRect);
+        intMat.delete();
       }
-      srcMats.push(mat);
-    }
-    // 1枚目を基準画像とする
-    const src = srcMats[0];
-    const width = src.cols;
-    // 左右切り落とし+下端の座標取得
-    const border = getBorder(src);
-    const height = border.height;
-    const left = border.x;
-    const right = left + Math.floor(border.width * 0.95);
-    // console.log(`幅:${width} 高:${border.height} 左:${left} 右:${right}`);
-    // 各座標取れない場合は処理終了
-    if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
-      window.alert('境界の取得に失敗しました');
-      // console.log(`幅:${width} 高:${height} 左:${left} 右:${right}`);
-      return;
-    }
-    if (deleteScrollBar) {
-      const scrollBarRect = getScrollBarRect(src, border);
+    } catch {
+    } finally {
       for (let i = 0; i < srcMats.length; i++) {
-        cv.rectangle(
-          srcMats[i],
-          new cv.Point(scrollBarRect.x, scrollBarRect.y),
-          new cv.Point(
-            scrollBarRect.x + scrollBarRect.width,
-            scrollBarRect.y + scrollBarRect.height
-          ),
-          [242, 243, 242, 255],
-          -1
-        );
+        srcMats[i].delete();
       }
     }
-    let intMat = src.roi(new cv.Rect(0, 0, width, height));
-    let totalY = height;
-    const searchHeight = Math.floor(src.rows * searchHeightRatio);
-    // console.log(`SearchHeight:${searchHeight}`);
-    // 2枚目以降
-    for (let i = 1; i < srcMats.length; i++) {
-      // スキル1行分切り抜き
-      let templMat = intMat.roi(
-        new cv.Rect(left, totalY - searchHeight, right - left, searchHeight)
-      );
-      // スキル1行分の一致箇所検索
-      const [score, rect] = templateMatch(
-        srcMats[i],
-        templMat,
-        new cv.Rect(left, 0, right - left, height)
-      );
-      templMat.delete();
-      if (score < minTemplateMatchScore) {
-        window.alert(
-          `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
-        );
-        return;
-      }
-      // console.log(`${i} ${score} ${rect.x}:${rect.y}`);
-
-      const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
-      intMat.delete();
-      const addMat = srcMats[i].roi(
-        new cv.Rect(
-          0,
-          rect.y + searchHeight,
-          width,
-          height - rect.y + searchHeight
-        )
-      );
-
-      // 垂直結合
-      intMat = vconcat(tmpMat, addMat);
-      addMat.delete();
-      // 結合元画像のスキル最下段の座標を覚えておく
-      totalY += height - searchHeight - rect.y;
-      // console.log(`TotalY:${totalY}`);
+    if (retMat != undefined) {
+      cv.imshow('dest-canvas', retMat);
+      retMat.delete();
+      setCreated(true);
     }
-
-    for (let i = 0; i < srcMats.length; i++) {
-      srcMats[i].delete();
-    }
-
-    const retRect = deleteSideMargin
-      ? new cv.Rect(border.x, 0, border.width, totalY)
-      : new cv.Rect(0, 0, width, totalY);
-    // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
-    const retMat = intMat.roi(retRect);
-    intMat.delete();
-    cv.imshow('dest-canvas', retMat);
-    setCreated(true);
-  }, [images, deleteScrollBar, deleteSideMargin]);
+  }, [images, deleteScrollBar, deleteSideMargin, layout]);
 
   const onDownload = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');

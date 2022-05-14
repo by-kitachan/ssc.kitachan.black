@@ -174,7 +174,7 @@ export function templateMatch(m: any, templ: any, rect: any) {
 }
 
 // 垂直結合
-export function vconcat(src: string, add: number) {
+export function vconcat(src: any, add: any) {
   // @ts-ignore
   const cv = window.cv;
   const vec = new cv.MatVector();
@@ -182,8 +182,68 @@ export function vconcat(src: string, add: number) {
   vec.push_back(src);
   // 結合用画像
   vec.push_back(add);
-  let ret = new cv.Mat();
+  const ret = new cv.Mat();
   // 垂直結合
   cv.vconcat(vec, ret);
+  vec.delete();
   return ret;
+}
+
+// 結合方向
+export enum CombineDirection {
+  Vertical,
+  Horizontal,
+}
+
+// 単純結合
+export function combineSimple(mats: any, direction: CombineDirection) {
+  // @ts-ignore
+  const cv = window.cv;
+  let totalWidth;
+  let totalHeight;
+  let x = 0;
+  let y = 0;
+  if (mats.length <= 0) {
+    return null;
+  } else if (mats.length == 1) {
+    return mats[0];
+  }
+
+  switch (direction) {
+    case CombineDirection.Vertical:
+      totalWidth = Math.max(...mats.map((p: { cols: number }) => p.cols));
+      totalHeight = mats
+        .map((p: { rows: number }) => p.rows)
+        .reduce((prev: number, curr: number) => prev + curr, 0);
+      break;
+    case CombineDirection.Horizontal:
+      totalWidth = mats
+        .map((p: { cols: number }) => p.cols)
+        .reduce((prev: number, curr: number) => prev + curr, 0);
+      totalHeight = Math.max(...mats.map((p: { rows: number }) => p.rows));
+      break;
+    default:
+      return null;
+  }
+
+  const retMat = new cv.Mat(
+    totalHeight,
+    totalWidth,
+    cv.CV_8UC4,
+    [255, 255, 255, 0]
+  );
+  for (let i = 0; i < mats.length; i++) {
+    const roi = retMat.roi(new cv.Rect(x, y, mats[i].cols, mats[i].rows));
+    mats[i].copyTo(roi);
+    roi.delete();
+    switch (direction) {
+      case CombineDirection.Vertical:
+        y += mats[i].rows;
+        break;
+      case CombineDirection.Horizontal:
+        x += mats[i].cols;
+        break;
+    }
+  }
+  return retMat;
 }
