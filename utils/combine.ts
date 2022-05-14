@@ -1,3 +1,10 @@
+interface Mat {
+  copyTo(m: any): any;
+  roi(rect: any): any;
+  cols: number;
+  rows: number;
+}
+
 // 認識系に使うパラメータ。基本触らない
 export const searchHeightRatio = 0.04;
 export const minTemplateMatchScore = 0.5;
@@ -190,13 +197,14 @@ export function vconcat(src: any, add: any) {
 }
 
 // 結合方向
-export enum CombineDirection {
-  Vertical,
-  Horizontal,
-}
+export const CombineDirection = {
+  Vertical: 0,
+  Horizontal: 1,
+} as const;
+type CombineDirection = typeof CombineDirection[keyof typeof CombineDirection];
 
 // 単純結合
-export function combineSimple(mats: any, direction: CombineDirection) {
+export function combineSimple(mats: Mat[], direction: CombineDirection) {
   // @ts-ignore
   const cv = window.cv;
   let totalWidth;
@@ -211,16 +219,12 @@ export function combineSimple(mats: any, direction: CombineDirection) {
 
   switch (direction) {
     case CombineDirection.Vertical:
-      totalWidth = Math.max(...mats.map((p: { cols: number }) => p.cols));
-      totalHeight = mats
-        .map((p: { rows: number }) => p.rows)
-        .reduce((prev: number, curr: number) => prev + curr, 0);
+      totalWidth = Math.max(...mats.map((p) => p.cols));
+      totalHeight = mats.reduce((prev, curr) => prev + curr.rows, 0);
       break;
     case CombineDirection.Horizontal:
-      totalWidth = mats
-        .map((p: { cols: number }) => p.cols)
-        .reduce((prev: number, curr: number) => prev + curr, 0);
-      totalHeight = Math.max(...mats.map((p: { rows: number }) => p.rows));
+      totalWidth = mats.reduce((prev, curr) => prev + curr.cols, 0);
+      totalHeight = Math.max(...mats.map((p) => p.rows));
       break;
     default:
       return null;
