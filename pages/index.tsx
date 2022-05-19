@@ -1,7 +1,7 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useCallback, useEffect, useState, Fragment } from 'react';
-import { Transition, Dialog } from '@headlessui/react';
+import { Transition, Dialog, Combobox, Switch } from '@headlessui/react';
 import {
   getBorder,
   minTemplateMatchScore,
@@ -15,7 +15,7 @@ import {
 import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
 import Script from 'next/script';
-import { Switch } from '@headlessui/react';
+import { CheckIcon, SelectorIcon } from '@heroicons/react/solid';
 
 function classNames(...classes: any) {
   return classes.filter(Boolean).join(' ');
@@ -299,6 +299,93 @@ function Toggle({
   );
 }
 
+function LayoutCombobox({
+  selectedLayout,
+  setSelectedLayout,
+}: {
+  selectedLayout: { name: string; id: Layout };
+  setSelectedLayout: ({ name, id }: { name: string; id: Layout }) => void;
+}) {
+  const [query, setQuery] = useState('');
+
+  //   Vertical: 0,
+  //   Horizontal: 1,
+  //   Pedigree: 2,
+  //   SimpleVertical: 3,
+  //   SimpleHorizontal: 4,
+  const layouts = [
+    { name: 'デフォルト', id: 0 },
+    { name: '単純縦結合', id: 3 },
+    { name: '単純横結合', id: 4 },
+  ];
+
+  const filteredLayouts =
+    query === ''
+      ? layouts
+      : layouts.filter((layout) => {
+          return layout.name.toLowerCase().includes(query.toLowerCase());
+        });
+
+  return (
+    <Combobox as="div" value={selectedLayout} onChange={setSelectedLayout}>
+      <Combobox.Label className="block text-sm font-medium text-gray-700">
+        レイアウト
+      </Combobox.Label>
+      <div className="relative mt-1">
+        <Combobox.Input
+          className="w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+          onChange={(event) => setQuery(event.target.value)}
+          displayValue={(layout: { name: string }) => layout.name}
+        />
+        <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+          <SelectorIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        </Combobox.Button>
+
+        {filteredLayouts.length > 0 && (
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            {filteredLayouts.map((layout) => (
+              <Combobox.Option
+                key={layout.id}
+                value={layout}
+                className={({ active }) =>
+                  classNames(
+                    'relative cursor-default select-none py-2 pl-3 pr-9',
+                    active ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                  )
+                }
+              >
+                {({ active, selected }) => (
+                  <>
+                    <span
+                      className={classNames(
+                        'block truncate',
+                        selected && 'font-semibold'
+                      )}
+                    >
+                      {layout.name}
+                    </span>
+
+                    {selected && (
+                      <span
+                        className={classNames(
+                          'absolute inset-y-0 right-0 flex items-center pr-4',
+                          active ? 'text-white' : 'text-indigo-600'
+                        )}
+                      >
+                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                    )}
+                  </>
+                )}
+              </Combobox.Option>
+            ))}
+          </Combobox.Options>
+        )}
+      </div>
+    </Combobox>
+  );
+}
+
 const Layout = {
   Vertical: 0,
   Horizontal: 1,
@@ -316,7 +403,14 @@ const Home: NextPage = () => {
   const [howToModalOpen, setHowToModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
   const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
-  const [layout, setLayout] = useState<Layout>(Layout.Vertical);
+  const [selectedLayout, setSelectedLayout] = useState<{
+    name: string;
+    id: Layout;
+  }>({
+    name: 'デフォルト',
+    id: Layout.Vertical,
+  });
+  const layout = selectedLayout.id;
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -839,6 +933,12 @@ const Home: NextPage = () => {
             setEnabled={setDeleteScrollBar}
           />
         </div>
+        <div className="mt-3 mx-auto">
+          <LayoutCombobox
+            setSelectedLayout={setSelectedLayout}
+            selectedLayout={selectedLayout}
+          />
+        </div>
       </div>
       <div className="text-center mt-4">
         <button
@@ -885,10 +985,17 @@ const Home: NextPage = () => {
               )}
             </div>
           )}
-          <canvas
-            id="dest-canvas"
-            style={{ maxHeight: '90vh', width: 'auto', margin: '0 auto' }}
-          />
+          <div style={{ maxWidth: '90vw' }}>
+            <canvas
+              id="dest-canvas"
+              style={{
+                // maxHeight: '90vh',
+                maxWidth: '100%',
+                width: 'auto',
+                margin: '0 auto',
+              }}
+            />
+          </div>
           {created && (
             <div className="flex justify-center my-8">
               <button
