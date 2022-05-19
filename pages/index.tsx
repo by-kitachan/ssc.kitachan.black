@@ -916,29 +916,33 @@ const Home: NextPage = () => {
         }}
       </ImageUploading>
       <div className="my-6 lg:w-1/3 mx-auto p-6 border-2 border-dashed rounded-md">
-        <h2 className="mx-auto text-gray-500 border-gray-300 border-b">
-          オプション
-        </h2>
-        <div className="my-3 mx-auto">
-          <Toggle
-            text="左右を切り落とす"
-            enabled={deleteSideMargin}
-            setEnabled={setDeleteSideMargin}
-          />
-        </div>
-        <div className="mt-3 mx-auto">
-          <Toggle
-            text="スクロールバーを消去する"
-            enabled={deleteScrollBar}
-            setEnabled={setDeleteScrollBar}
-          />
-        </div>
-        <div className="mt-3 mx-auto">
+        <div className="mx-auto">
           <LayoutCombobox
             setSelectedLayout={setSelectedLayout}
             selectedLayout={selectedLayout}
           />
         </div>
+        {selectedLayout.id === 0 && (
+          <>
+            <h2 className="block text-sm font-medium text-gray-700 mt-4">
+              オプション
+            </h2>
+            <div className="my-3 mx-auto">
+              <Toggle
+                text="左右を切り落とす"
+                enabled={deleteSideMargin}
+                setEnabled={setDeleteSideMargin}
+              />
+            </div>
+            <div className="mt-3 mx-auto">
+              <Toggle
+                text="スクロールバーを消去する"
+                enabled={deleteScrollBar}
+                setEnabled={setDeleteScrollBar}
+              />
+            </div>
+          </>
+        )}
       </div>
       <div className="text-center mt-4">
         <button
