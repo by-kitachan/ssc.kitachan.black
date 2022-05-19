@@ -127,6 +127,97 @@ const WarningModal: React.VFC<{
   );
 };
 
+const HowtoModal: React.VFC<{
+  setOpen: (open: boolean) => void;
+  open: boolean;
+}> = ({ open, setOpen }) => {
+  return (
+    <Transition.Root show={open} as={Fragment}>
+      <Dialog
+        as="div"
+        className="fixed z-10 inset-0 overflow-y-auto"
+        onClose={setOpen}
+      >
+        <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <Dialog.Overlay className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+          </Transition.Child>
+          {/* This element is to trick the browser into centering the modal contents. */}
+          <span
+            className="hidden sm:inline-block sm:align-middle sm:h-screen"
+            aria-hidden="true"
+          >
+            &#8203;
+          </span>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            enterTo="opacity-100 translate-y-0 sm:scale-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+            leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+          >
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle max-w-3xl w-full sm:p-6">
+              <div>
+                <div className="mt-3 sm:mt-5">
+                  <h2 className="text-2xl">使い方</h2>
+                  <div className="mt-4 text-sm text-gray-500">
+                    ・
+                    結合したい画像を「アップロード」または「ドラッグ&ドロップ」で入力してください。なお、すべての画像の解像度は統一してください。
+                    <br />
+                    ・結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
+                    <br />・
+                    結合位置を判定するため、各画像は必ず1スキル分重複させるように撮影してください(色枠参照)
+                    <ul
+                      role="list"
+                      className="flex flex-col justify-center items-center mt-4"
+                    >
+                      <li className="relative">
+                        <img
+                          src="https://media.discordapp.net/attachments/968691655194603570/974121517648592957/2022-05-12_102310.png"
+                          alt=""
+                          className="object-contain pointer-events-none group-hover:opacity-75"
+                          style={{ maxHeight: '60vh' }}
+                        />
+                      </li>
+                      <li className="relative mt-4">
+                        <img
+                          src="https://media.discordapp.net/attachments/968691655194603570/974128976819814430/2022-05-12_105954.png"
+                          alt=""
+                          className="object-contain pointer-events-none group-hover:opacity-75"
+                          style={{ maxHeight: '60vh' }}
+                        />
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-6">
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </Transition.Child>
+        </div>
+      </Dialog>
+    </Transition.Root>
+  );
+};
+
 function Toggle({
   text,
   enabled,
@@ -221,7 +312,8 @@ const Home: NextPage = () => {
   const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
   const [images, setImages] = useState<ImageListType>([]);
-  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [warningModalOpen, setWarningModalOpen] = useState<boolean>(false);
+  const [howToModalOpen, setHowToModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
   const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
   const [layout, setLayout] = useState<Layout>(Layout.Vertical);
@@ -237,7 +329,7 @@ const Home: NextPage = () => {
   useEffect(() => {
     if (errors) {
       if (errors.maxNumber) {
-        alert(`設定できる画像は10枚までです。`);
+        alert(`設定できる画像は100枚までです。`);
       } else if (errors.acceptType) {
         alert('サポートされてないファイルタイプです。');
       } else if (errors.maxFileSize) {
@@ -552,12 +644,13 @@ const Home: NextPage = () => {
         
             gtag('config', 'UA-212558389-4');`}</Script>
       <Script src="https://docs.opencv.org/4.5.5/opencv.js" />
-      <WarningModal open={modalOpen} setOpen={setModalOpen} />
+      <WarningModal open={warningModalOpen} setOpen={setWarningModalOpen} />
+      <HowtoModal open={howToModalOpen} setOpen={setHowToModalOpen} />
       <ImageUploading
         multiple
         value={images}
         onChange={onChange}
-        maxNumber={10}
+        maxNumber={100}
         dataURLKey="data_url"
         acceptType={['jpg', 'png', 'jpeg', 'heic']}
         maxFileSize={10 * 1024 * 1024}
@@ -587,21 +680,29 @@ const Home: NextPage = () => {
                       className="text-sm text-gray-500 mt-4"
                       style={{ lineHeight: '1.4rem' }}
                     >
-                      <b>「スキル画面」「チーム競技場のスコア情報画面」</b>
-                      にも対応しています。
+                      <b>「継承画面」「スキル画面」</b>
+                      の画像を1枚に纏めます。
+                      <br />
+                      <a
+                        href="https://kitachan.black/11b8ebd4519e4fca82304b4e4ccf3d9c"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 underline"
+                      >
+                        他画面の作成事例はこちら
+                      </a>
                     </p>
                   </label>
                   <div className="my-4 text-center">
-                    <a
-                      href="https://kitachan.black/11b8ebd4519e4fca82304b4e4ccf3d9c"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => setHowToModalOpen(true)}
+                      type="button"
                       className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      作成例はこちら
-                    </a>
+                      使い方を表示する
+                    </button>
                     <button
-                      onClick={() => setModalOpen(true)}
+                      onClick={() => setWarningModalOpen(true)}
                       type="button"
                       className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
