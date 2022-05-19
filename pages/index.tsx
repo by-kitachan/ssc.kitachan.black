@@ -371,15 +371,15 @@ const Home: NextPage = () => {
         // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
         retMat = intMat.roi(retRect);
         intMat.delete();
-        if (retMat != undefined) {
-          cv.imshow('dest-canvas', retMat);
-          setCreated(true);
-        } else {
-          console.log('結合画像の生成に失敗しました');
-        }
+      }
+      if (retMat != undefined) {
+        cv.imshow('dest-canvas', retMat);
+        setCreated(true);
+      } else {
+        alert('結合画像の生成に失敗しました');
       }
     } catch {
-      console.log('画像処理に失敗しました');
+      alert('画像処理に失敗しました');
     } finally {
       for (let i = 0; i < srcMats.length; i++) {
         srcMats[i].delete();
