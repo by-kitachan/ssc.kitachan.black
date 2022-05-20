@@ -565,10 +565,10 @@ const Home: NextPage = () => {
         cv.imshow('dest-canvas', retMat);
         setCreated(true);
       } else {
-        alert('結合画像の生成に失敗しました');
+        window.alert('結合画像の生成に失敗しました');
       }
     } catch {
-      alert('画像処理に失敗しました');
+      window.alert('画像処理に失敗しました');
     } finally {
       for (let i = 0; i < srcMats.length; i++) {
         srcMats[i].delete();
