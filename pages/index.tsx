@@ -306,8 +306,6 @@ function LayoutCombobox({
   selectedLayout: { name: string; id: Layout };
   setSelectedLayout: ({ name, id }: { name: string; id: Layout }) => void;
 }) {
-  const [query, setQuery] = useState('');
-
   //   Vertical: 0,
   //   Horizontal: 1,
   //   Pedigree: 2,
@@ -319,12 +317,12 @@ function LayoutCombobox({
     { name: '単純横結合', id: 4 },
   ];
 
-  const filteredLayouts =
-    query === ''
-      ? layouts
-      : layouts.filter((layout) => {
-          return layout.name.toLowerCase().includes(query.toLowerCase());
-        });
+  useEffect(() => {
+    const input = document.querySelector<HTMLInputElement>('.layout-input');
+    if (input) {
+      input.disabled = true;
+    }
+  }, []);
 
   return (
     <Combobox as="div" value={selectedLayout} onChange={setSelectedLayout}>
@@ -332,18 +330,23 @@ function LayoutCombobox({
         レイアウト
       </Combobox.Label>
       <div className="relative mt-1">
-        <Combobox.Input
-          className="w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
-          onChange={(event) => setQuery(event.target.value)}
-          displayValue={(layout: { name: string }) => layout.name}
-        />
-        <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <SelectorIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        <Combobox.Button className="w-full">
+          <Combobox.Input
+            className="layout-input cursor-pointer w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+            onChange={() => {}}
+            displayValue={(layout: { name: string }) => layout.name}
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+            <SelectorIcon
+              className="h-5 w-5 text-gray-400"
+              aria-hidden="true"
+            />
+          </div>
         </Combobox.Button>
 
-        {filteredLayouts.length > 0 && (
+        {layouts.length > 0 && (
           <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-            {filteredLayouts.map((layout) => (
+            {layouts.map((layout) => (
               <Combobox.Option
                 key={layout.id}
                 value={layout}
