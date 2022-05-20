@@ -1,3 +1,10 @@
+interface Mat {
+  copyTo(m: any): any;
+  roi(rect: any): any;
+  cols: number;
+  rows: number;
+}
+
 // 認識系に使うパラメータ。基本触らない
 export const searchHeightRatio = 0.04;
 export const minTemplateMatchScore = 0.5;
@@ -174,7 +181,7 @@ export function templateMatch(m: any, templ: any, rect: any) {
 }
 
 // 垂直結合
-export function vconcat(src: string, add: number) {
+export function vconcat(src: any, add: any) {
   // @ts-ignore
   const cv = window.cv;
   const vec = new cv.MatVector();
@@ -182,8 +189,65 @@ export function vconcat(src: string, add: number) {
   vec.push_back(src);
   // 結合用画像
   vec.push_back(add);
-  let ret = new cv.Mat();
+  const ret = new cv.Mat();
   // 垂直結合
   cv.vconcat(vec, ret);
+  vec.delete();
   return ret;
+}
+
+// 結合方向
+export const CombineDirection = {
+  Vertical: 0,
+  Horizontal: 1,
+} as const;
+type CombineDirection = typeof CombineDirection[keyof typeof CombineDirection];
+
+// 単純結合
+export function combineSimple(mats: Mat[], direction: CombineDirection) {
+  // @ts-ignore
+  const cv = window.cv;
+  let totalWidth;
+  let totalHeight;
+  let x = 0;
+  let y = 0;
+  if (mats.length <= 0) {
+    return null;
+  } else if (mats.length == 1) {
+    return mats[0];
+  }
+
+  switch (direction) {
+    case CombineDirection.Vertical:
+      totalWidth = Math.max(...mats.map((p) => p.cols));
+      totalHeight = mats.reduce((prev, curr) => prev + curr.rows, 0);
+      break;
+    case CombineDirection.Horizontal:
+      totalWidth = mats.reduce((prev, curr) => prev + curr.cols, 0);
+      totalHeight = Math.max(...mats.map((p) => p.rows));
+      break;
+    default:
+      return null;
+  }
+
+  const retMat = new cv.Mat(
+    totalHeight,
+    totalWidth,
+    cv.CV_8UC4,
+    [255, 255, 255, 0]
+  );
+  for (let i = 0; i < mats.length; i++) {
+    const roi = retMat.roi(new cv.Rect(x, y, mats[i].cols, mats[i].rows));
+    mats[i].copyTo(roi);
+    roi.delete();
+    switch (direction) {
+      case CombineDirection.Vertical:
+        y += mats[i].rows;
+        break;
+      case CombineDirection.Horizontal:
+        x += mats[i].cols;
+        break;
+    }
+  }
+  return retMat;
 }

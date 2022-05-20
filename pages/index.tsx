@@ -1,7 +1,7 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useCallback, useEffect, useState, Fragment } from 'react';
-import { Transition, Dialog } from '@headlessui/react';
+import { Transition, Dialog, Combobox, Switch } from '@headlessui/react';
 import {
   getBorder,
   minTemplateMatchScore,
@@ -9,11 +9,13 @@ import {
   templateMatch,
   vconcat,
   getScrollBarRect,
+  CombineDirection,
+  combineSimple,
 } from '../utils/combine';
 import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
 import Script from 'next/script';
-import { Switch } from '@headlessui/react';
+import { CheckIcon, SelectorIcon } from '@heroicons/react/solid';
 
 function classNames(...classes: any) {
   return classes.filter(Boolean).join(' ');
@@ -98,7 +100,7 @@ const WarningModal: React.VFC<{
                     <ul role="list" className="flex justify-center mt-4">
                       <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/956400362644971530/961167272678920212/exsample1.png"
+                          src="/images/warning1.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
@@ -169,27 +171,63 @@ const HowtoModal: React.VFC<{
                 <div className="mt-3 sm:mt-5">
                   <h2 className="text-2xl">使い方</h2>
                   <div className="mt-4 text-sm text-gray-500">
+                    <h3 className="text-lg">1. デフォルトレイアウト</h3>
                     ・
                     結合したい画像を「アップロード」または「ドラッグ&ドロップ」で入力してください。なお、すべての画像の解像度は統一してください。
                     <br />
-                    ・結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
-                    <br />・
+                    ・
+                    結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
+                    <br />
+                    ・
                     結合位置を判定するため、各画像は必ず1スキル分重複させるように撮影してください(色枠参照)
+                    <br />・
+                    オプション機能(左右を切り落とす・スクロールバーを消去する)はお好みでご使用ください
                     <ul
                       role="list"
                       className="flex flex-col justify-center items-center mt-4"
                     >
                       <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/968691655194603570/974121517648592957/2022-05-12_102310.png"
+                          src="/images/how-to1.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
                         />
                       </li>
-                      <li className="relative mt-4">
+                    </ul>
+                    <h3 className="text-lg mt-4">2. 単純結合レイアウト</h3>
+                    ・
+                    結合したい画像を「アップロード」または「ドラッグ&ドロップ」で入力してください。画像の解像度を統一する必要はありません。
+                    <br />
+                    ・
+                    結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
+                    <br />※ 単純結合レイアウトではオプション機能は動作しません
+                    <ul
+                      role="list"
+                      className="flex flex-col justify-center items-center mt-4"
+                    >
+                      <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/968691655194603570/974128976819814430/2022-05-12_105954.png"
+                          src="/images/how-to2.png"
+                          alt=""
+                          className="object-contain pointer-events-none group-hover:opacity-75"
+                          style={{ maxHeight: '60vh' }}
+                        />
+                      </li>
+                    </ul>
+                    <h3 className="text-lg mt-4">
+                      3. 単純結合レイアウト活用例
+                    </h3>
+                    ・
+                    「デフォルトレイアウト」でスキルタブ・結合タブ画面を結合する
+                    <br />・ 育成情報タブを加えて単純横結合する
+                    <ul
+                      role="list"
+                      className="flex flex-col justify-center items-center mt-4"
+                    >
+                      <li className="relative">
+                        <img
+                          src="/images/how-to3.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
@@ -297,6 +335,105 @@ function Toggle({
   );
 }
 
+function LayoutCombobox({
+  selectedLayout,
+  setSelectedLayout,
+}: {
+  selectedLayout: { name: string; id: Layout };
+  setSelectedLayout: ({ name, id }: { name: string; id: Layout }) => void;
+}) {
+  //   Vertical: 0,
+  //   Horizontal: 1,
+  //   Pedigree: 2,
+  //   SimpleVertical: 3,
+  //   SimpleHorizontal: 4,
+  const layouts = [
+    { name: 'デフォルト', id: 0 },
+    { name: '単純縦結合', id: 3 },
+    { name: '単純横結合', id: 4 },
+  ];
+
+  useEffect(() => {
+    const input = document.querySelector<HTMLInputElement>('.layout-input');
+    if (input) {
+      input.disabled = true;
+    }
+  }, []);
+
+  return (
+    <Combobox as="div" value={selectedLayout} onChange={setSelectedLayout}>
+      <Combobox.Label className="block text-sm font-medium text-gray-700">
+        レイアウト
+      </Combobox.Label>
+      <div className="relative mt-1">
+        <Combobox.Button className="w-full">
+          <Combobox.Input
+            className="layout-input cursor-pointer w-full rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
+            onChange={() => {}}
+            displayValue={(layout: { name: string }) => layout.name}
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+            <SelectorIcon
+              className="h-5 w-5 text-gray-400"
+              aria-hidden="true"
+            />
+          </div>
+        </Combobox.Button>
+
+        {layouts.length > 0 && (
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            {layouts.map((layout) => (
+              <Combobox.Option
+                key={layout.id}
+                value={layout}
+                className={({ active }) =>
+                  classNames(
+                    'relative cursor-default select-none py-2 pl-3 pr-9',
+                    active ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                  )
+                }
+              >
+                {({ active, selected }) => (
+                  <>
+                    <span
+                      className={classNames(
+                        'block truncate',
+                        selected && 'font-semibold'
+                      )}
+                    >
+                      {layout.name}
+                    </span>
+
+                    {selected && (
+                      <span
+                        className={classNames(
+                          'absolute inset-y-0 right-0 flex items-center pr-4',
+                          active ? 'text-white' : 'text-indigo-600'
+                        )}
+                      >
+                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                    )}
+                  </>
+                )}
+              </Combobox.Option>
+            ))}
+          </Combobox.Options>
+        )}
+      </div>
+    </Combobox>
+  );
+}
+
+const Layout = {
+  Vertical: 0,
+  Horizontal: 1,
+  Pedigree: 2,
+  SimpleVertical: 3,
+  SimpleHorizontal: 4,
+} as const;
+type Layout = typeof Layout[keyof typeof Layout];
+
 const Home: NextPage = () => {
   const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
@@ -305,6 +442,14 @@ const Home: NextPage = () => {
   const [howToModalOpen, setHowToModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
   const [deleteScrollBar, setDeleteScrollBar] = useState<boolean>(false);
+  const [selectedLayout, setSelectedLayout] = useState<{
+    name: string;
+    id: Layout;
+  }>({
+    name: 'デフォルト',
+    id: Layout.Vertical,
+  });
+  const layout = selectedLayout.id;
 
   const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -344,109 +489,131 @@ const Home: NextPage = () => {
   const onCreate = useCallback(() => {
     // @ts-ignore
     const cv = window.cv;
-    // 結合処理入り口
+
     const srcMats = [];
-    // imgタグのidから画像読み取り(imgタグにwidthやheight指定あるとリサイズされてしまうので注意)
-    for (let i = 0; i < images.length; i++) {
-      const img = new Image();
-      img.src = images[i].data_url;
-      const mat = cv.imread(img);
-      // console.log(`Input:${i} ${mat.cols}:${mat.rows} pixel`);
-      if (i > 0) {
-        if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
-          window.alert('異なる解像度の画像が入力されています');
+    let retMat;
+    try {
+      for (let i = 0; i < images.length; i++) {
+        const img = new Image();
+        img.src = images[i].data_url;
+        const mat = cv.imread(img);
+        if (i > 0) {
+          if (
+            layout == Layout.Vertical ||
+            layout == Layout.Horizontal ||
+            layout == Layout.Pedigree
+          ) {
+            if (srcMats[0].cols != mat.cols || srcMats[0].rows != mat.rows) {
+              window.alert('異なる解像度の画像が入力されています');
+              mat.delete();
+              return;
+            }
+          }
+        }
+        srcMats.push(mat);
+      }
+      // 1枚目を基準画像とする
+      const src = srcMats[0];
+      if (layout == Layout.SimpleVertical) {
+        retMat = combineSimple(srcMats, CombineDirection.Vertical);
+      } else if (layout == Layout.SimpleHorizontal) {
+        retMat = combineSimple(srcMats, CombineDirection.Horizontal);
+      } else {
+        const width = src.cols;
+        // 左右切り落とし+下端の座標取得
+        const border = getBorder(src);
+        const height = border.height;
+        const left = border.x;
+        const right = left + Math.floor(border.width * 0.95);
+
+        // 各座標取れない場合は処理終了
+        if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
+          window.alert('境界の取得に失敗しました');
           return;
         }
+        if (deleteScrollBar) {
+          const scrollBarRect = getScrollBarRect(src, border);
+          for (let i = 0; i < srcMats.length; i++) {
+            cv.rectangle(
+              srcMats[i],
+              new cv.Point(scrollBarRect.x, scrollBarRect.y),
+              new cv.Point(
+                scrollBarRect.x + scrollBarRect.width,
+                scrollBarRect.y + scrollBarRect.height
+              ),
+              [242, 243, 242, 255],
+              -1
+            );
+          }
+        }
+        let intMat = src.roi(new cv.Rect(0, 0, width, height));
+        let totalY = height;
+        const searchHeight = Math.floor(src.rows * searchHeightRatio);
+
+        // 2枚目以降
+        for (let i = 1; i < srcMats.length; i++) {
+          // スキル1行分切り抜き
+          let templMat = intMat.roi(
+            new cv.Rect(left, totalY - searchHeight, right - left, searchHeight)
+          );
+          // スキル1行分の一致箇所検索
+          const [score, rect] = templateMatch(
+            srcMats[i],
+            templMat,
+            new cv.Rect(left, 0, right - left, height)
+          );
+          templMat.delete();
+          if (score < minTemplateMatchScore) {
+            window.alert(
+              `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
+            );
+            intMat.delete();
+            return;
+          }
+
+          const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
+          const addMat = srcMats[i].roi(
+            new cv.Rect(
+              0,
+              rect.y + searchHeight,
+              width,
+              height - rect.y + searchHeight
+            )
+          );
+
+          // 垂直結合
+          intMat.delete();
+          intMat = vconcat(tmpMat, addMat);
+          addMat.delete();
+          tmpMat.delete();
+          // 結合元画像のスキル最下段の座標を覚えておく
+          totalY += height - searchHeight - rect.y;
+        }
+
+        const retRect = deleteSideMargin
+          ? new cv.Rect(border.x, 0, border.width, totalY)
+          : new cv.Rect(0, 0, width, totalY);
+        // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
+        retMat = intMat.roi(retRect);
+        intMat.delete();
       }
-      srcMats.push(mat);
-    }
-    // 1枚目を基準画像とする
-    const src = srcMats[0];
-    const width = src.cols;
-    // 左右切り落とし+下端の座標取得
-    const border = getBorder(src);
-    const height = border.height;
-    const left = border.x;
-    const right = left + Math.floor(border.width * 0.95);
-    // console.log(`幅:${width} 高:${border.height} 左:${left} 右:${right}`);
-    // 各座標取れない場合は処理終了
-    if (width <= 0 || left <= 0 || right <= 0 || height <= 0) {
-      window.alert('境界の取得に失敗しました');
-      // console.log(`幅:${width} 高:${height} 左:${left} 右:${right}`);
-      return;
-    }
-    if (deleteScrollBar) {
-      const scrollBarRect = getScrollBarRect(src, border);
+      if (retMat != undefined) {
+        cv.imshow('dest-canvas', retMat);
+        setCreated(true);
+      } else {
+        window.alert('結合画像の生成に失敗しました');
+      }
+    } catch {
+      window.alert('画像処理に失敗しました');
+    } finally {
       for (let i = 0; i < srcMats.length; i++) {
-        cv.rectangle(
-          srcMats[i],
-          new cv.Point(scrollBarRect.x, scrollBarRect.y),
-          new cv.Point(
-            scrollBarRect.x + scrollBarRect.width,
-            scrollBarRect.y + scrollBarRect.height
-          ),
-          [242, 243, 242, 255],
-          -1
-        );
+        srcMats[i].delete();
+      }
+      if (retMat != undefined) {
+        retMat.delete();
       }
     }
-    let intMat = src.roi(new cv.Rect(0, 0, width, height));
-    let totalY = height;
-    const searchHeight = Math.floor(src.rows * searchHeightRatio);
-    // console.log(`SearchHeight:${searchHeight}`);
-    // 2枚目以降
-    for (let i = 1; i < srcMats.length; i++) {
-      // スキル1行分切り抜き
-      let templMat = intMat.roi(
-        new cv.Rect(left, totalY - searchHeight, right - left, searchHeight)
-      );
-      // スキル1行分の一致箇所検索
-      const [score, rect] = templateMatch(
-        srcMats[i],
-        templMat,
-        new cv.Rect(left, 0, right - left, height)
-      );
-      templMat.delete();
-      if (score < minTemplateMatchScore) {
-        window.alert(
-          `${i}番目と${i + 1}番目の画像の一致箇所が見つかりませんでした`
-        );
-        return;
-      }
-      // console.log(`${i} ${score} ${rect.x}:${rect.y}`);
-
-      const tmpMat = intMat.roi(new cv.Rect(0, 0, width, totalY));
-      intMat.delete();
-      const addMat = srcMats[i].roi(
-        new cv.Rect(
-          0,
-          rect.y + searchHeight,
-          width,
-          height - rect.y + searchHeight
-        )
-      );
-
-      // 垂直結合
-      intMat = vconcat(tmpMat, addMat);
-      addMat.delete();
-      // 結合元画像のスキル最下段の座標を覚えておく
-      totalY += height - searchHeight - rect.y;
-      // console.log(`TotalY:${totalY}`);
-    }
-
-    for (let i = 0; i < srcMats.length; i++) {
-      srcMats[i].delete();
-    }
-
-    const retRect = deleteSideMargin
-      ? new cv.Rect(border.x, 0, border.width, totalY)
-      : new cv.Rect(0, 0, width, totalY);
-    // 閉じるボタンまで入っているので、スキル枠までを切り抜き、出力画像とする
-    const retMat = intMat.roi(retRect);
-    intMat.delete();
-    cv.imshow('dest-canvas', retMat);
-    setCreated(true);
-  }, [images, deleteScrollBar, deleteSideMargin]);
+  }, [images, deleteScrollBar, deleteSideMargin, layout]);
 
   const onDownload = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>('#dest-canvas');
@@ -788,23 +955,33 @@ const Home: NextPage = () => {
         }}
       </ImageUploading>
       <div className="my-6 lg:w-1/3 mx-auto p-6 border-2 border-dashed rounded-md">
-        <h2 className="mx-auto text-gray-500 border-gray-300 border-b">
-          オプション
-        </h2>
-        <div className="my-3 mx-auto">
-          <Toggle
-            text="左右を切り落とす"
-            enabled={deleteSideMargin}
-            setEnabled={setDeleteSideMargin}
+        <div className="mx-auto">
+          <LayoutCombobox
+            setSelectedLayout={setSelectedLayout}
+            selectedLayout={selectedLayout}
           />
         </div>
-        <div className="mt-3 mx-auto">
-          <Toggle
-            text="スクロールバーを消去する"
-            enabled={deleteScrollBar}
-            setEnabled={setDeleteScrollBar}
-          />
-        </div>
+        {selectedLayout.id === 0 && (
+          <>
+            <h2 className="block text-sm font-medium text-gray-700 mt-4">
+              オプション
+            </h2>
+            <div className="my-3 mx-auto">
+              <Toggle
+                text="左右を切り落とす"
+                enabled={deleteSideMargin}
+                setEnabled={setDeleteSideMargin}
+              />
+            </div>
+            <div className="mt-3 mx-auto">
+              <Toggle
+                text="スクロールバーを消去する"
+                enabled={deleteScrollBar}
+                setEnabled={setDeleteScrollBar}
+              />
+            </div>
+          </>
+        )}
       </div>
       <div className="text-center mt-4">
         <button
@@ -851,10 +1028,17 @@ const Home: NextPage = () => {
               )}
             </div>
           )}
-          <canvas
-            id="dest-canvas"
-            style={{ maxHeight: '90vh', width: 'auto', margin: '0 auto' }}
-          />
+          <div style={{ maxWidth: '90vw' }}>
+            <canvas
+              id="dest-canvas"
+              style={{
+                // maxHeight: '90vh',
+                maxWidth: '100%',
+                width: 'auto',
+                margin: '0 auto',
+              }}
+            />
+          </div>
           {created && (
             <div className="flex justify-center my-8">
               <button
