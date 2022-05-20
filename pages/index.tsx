@@ -100,7 +100,7 @@ const WarningModal: React.VFC<{
                     <ul role="list" className="flex justify-center mt-4">
                       <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/956400362644971530/961167272678920212/exsample1.png"
+                          src="/images/warning1.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
@@ -171,27 +171,63 @@ const HowtoModal: React.VFC<{
                 <div className="mt-3 sm:mt-5">
                   <h2 className="text-2xl">使い方</h2>
                   <div className="mt-4 text-sm text-gray-500">
+                    <h3 className="text-lg">1. デフォルトレイアウト</h3>
                     ・
                     結合したい画像を「アップロード」または「ドラッグ&ドロップ」で入力してください。なお、すべての画像の解像度は統一してください。
                     <br />
-                    ・結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
-                    <br />・
+                    ・
+                    結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
+                    <br />
+                    ・
                     結合位置を判定するため、各画像は必ず1スキル分重複させるように撮影してください(色枠参照)
+                    <br />・
+                    オプション機能(左右を切り落とす・スクロールバーを消去する)はお好みでご使用ください
                     <ul
                       role="list"
                       className="flex flex-col justify-center items-center mt-4"
                     >
                       <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/968691655194603570/974121517648592957/2022-05-12_102310.png"
+                          src="/images/how-to1.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
                         />
                       </li>
-                      <li className="relative mt-4">
+                    </ul>
+                    <h3 className="text-lg mt-4">2. 単純結合レイアウト</h3>
+                    ・
+                    結合したい画像を「アップロード」または「ドラッグ&ドロップ」で入力してください。画像の解像度を統一する必要はありません。
+                    <br />
+                    ・
+                    結合は1枚目から順番に実施します。順番の変更が必要な場合は矢印ボタンで入れ替えてください。
+                    <br />※ 単純結合レイアウトではオプション機能は動作しません
+                    <ul
+                      role="list"
+                      className="flex flex-col justify-center items-center mt-4"
+                    >
+                      <li className="relative">
                         <img
-                          src="https://media.discordapp.net/attachments/968691655194603570/974128976819814430/2022-05-12_105954.png"
+                          src="/images/how-to2.png"
+                          alt=""
+                          className="object-contain pointer-events-none group-hover:opacity-75"
+                          style={{ maxHeight: '60vh' }}
+                        />
+                      </li>
+                    </ul>
+                    <h3 className="text-lg mt-4">
+                      3. 単純結合レイアウト活用例
+                    </h3>
+                    ・
+                    「デフォルトレイアウト」でスキルタブ・結合タブ画面を結合する
+                    <br />・ 育成情報タブを加えて単純横結合する
+                    <ul
+                      role="list"
+                      className="flex flex-col justify-center items-center mt-4"
+                    >
+                      <li className="relative">
+                        <img
+                          src="/images/how-to3.png"
                           alt=""
                           className="object-contain pointer-events-none group-hover:opacity-75"
                           style={{ maxHeight: '60vh' }}
