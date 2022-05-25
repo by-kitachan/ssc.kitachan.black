@@ -25,23 +25,20 @@ const people = [
   {
     name: '無冠の帝王',
     role: '帝王塾塾長',
-    imageUrl:
-      'https://pbs.twimg.com/profile_images/1445523701240254471/djeol9PI_400x400.jpg',
+    imageUrl: '/images/teio.jpeg',
     twitterUrl: 'https://twitter.com/teioupawa',
   },
   {
     name: 'ポチ',
     role: '画像処理担当',
-    imageUrl:
-      'https://pbs.twimg.com/profile_images/1461309767939682304/K3pWuFly_400x400.jpg',
+    imageUrl: '/images/poti.jpeg',
     twitterUrl: 'https://twitter.com/aoneko_uma',
     hp: 'https://aoneko-uma.fanbox.cc/',
   },
   {
     name: 'おりばー',
     role: 'Web担当',
-    imageUrl:
-      'https://pbs.twimg.com/profile_images/1395631397247717379/YGOCetpV_400x400.jpg',
+    imageUrl: '/images/oliver.jpeg',
     twitterUrl: 'https://twitter.com/oliver_uma',
     hp: 'https://youtube.com/c/kitachan',
   },
