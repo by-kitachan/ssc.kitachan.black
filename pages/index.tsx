@@ -733,7 +733,7 @@ const Home: NextPage = () => {
     [images]
   );
 
-  const title = 'レシート因子作成くんβ';
+  const title = 'レシート因子作成くん';
   const description =
     '「ウマ娘詳細」画面の「継承タブ」の複数枚画像を1枚に結合するツールです';
   const siteUrl = 'https://ssc.kitachan.black';
@@ -766,6 +766,7 @@ const Home: NextPage = () => {
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={`${siteUrl}/ogp.png`} />
+        <link rel="manifest" href="/manifest.json" />
       </Head>
       <Script
         async
@@ -807,7 +808,7 @@ const Home: NextPage = () => {
                     htmlFor="cover-photo"
                     className="block text-3xl font-medium text-gray-700 text-center"
                   >
-                    レシート因子作成くんβ
+                    レシート因子作成くん
                     <br />
                     <p
                       className="text-sm text-gray-500 mt-4"

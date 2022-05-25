@@ -1,0 +1,18 @@
+{
+  "short_name": "レシート因子作成くん",
+  "name": "レシート因子作成くん",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/?utm_source=pwa&utm_medium=shortcut&utm_campaign=none",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#CBFFFF",
+  "description": "「継承画面」「スキル画面」の画像を1枚に纏めます。",
+  "background_color": "#FFFFFF"
+}
