@@ -63,7 +63,7 @@ export function getBorder(m: any) {
   let borderBottom = 0;
   posCounts = {};
 
-  for (y = Math.floor(m.rows * 0.7); y < Math.floor(m.rows * 0.95); y++) {
+  for (y = Math.floor(m.rows * 0.71); y < Math.floor(m.rows * 0.95); y++) {
     let findWhite = false;
     for (x = borderX + 3; x < Math.floor(m.cols - borderX - 3); x++) {
       if (hsvMask.data[y * m.cols + x] == White) {
