@@ -16,6 +16,7 @@ import ImageUploading, { ErrorsType } from 'react-images-uploading';
 import { ImageListType } from 'react-images-uploading/dist/typings';
 import Script from 'next/script';
 import { CheckIcon, SelectorIcon } from '@heroicons/react/solid';
+import dayjs from 'dayjs';
 
 function classNames(...classes: any) {
   return classes.filter(Boolean).join(' ');
@@ -619,7 +620,7 @@ const Home: NextPage = () => {
         const link = document.createElement('a');
         if (blob) {
           link.href = URL.createObjectURL(blob);
-          link.download = 'result.png';
+          link.download = `result-${dayjs().unix()}.png`;
           link.target = '_blank';
           link.click();
         }
