@@ -76,6 +76,21 @@ export function getBorder(m: any) {
       break;
     }
   }
+  if (borderBottom == 0) {
+    for (y = Math.floor(m.rows * 0.71); y >= Math.floor(m.rows * 0.5); y--) {
+      let findWhite = false;
+      for (x = borderX + 3; x < Math.floor(m.cols - borderX - 3); x++) {
+        if (hsvMask.data[y * m.cols + x] == White) {
+          findWhite = true;
+          break;
+        }
+      }
+      if (!findWhite) {
+        borderBottom = y - 2;
+        break;
+      }
+    }
+  }
 
   high.delete();
   low.delete();
