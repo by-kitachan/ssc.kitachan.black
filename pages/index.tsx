@@ -1,19 +1,18 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import { useCallback, useEffect, useState, Fragment } from 'react';
-import { Transition, Dialog, Combobox, Switch } from '@headlessui/react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Combobox, Dialog, Switch, Transition } from '@headlessui/react';
 import {
+  CombineDirection,
+  combineSimple,
   getBorder,
+  getScrollBarRect,
   minTemplateMatchScore,
   searchHeightRatio,
   templateMatch,
   vconcat,
-  getScrollBarRect,
-  CombineDirection,
-  combineSimple,
 } from '../utils/combine';
-import ImageUploading, { ErrorsType } from 'react-images-uploading';
-import { ImageListType } from 'react-images-uploading/dist/typings';
+import { useDropzone } from 'react-dropzone';
 import Script from 'next/script';
 import { CheckIcon, SelectorIcon } from '@heroicons/react/solid';
 import dayjs from 'dayjs';
@@ -433,9 +432,8 @@ const Layout = {
 type Layout = typeof Layout[keyof typeof Layout];
 
 const Home: NextPage = () => {
-  const [errors, setErrors] = useState<ErrorsType>();
   const [created, setCreated] = useState(false);
-  const [images, setImages] = useState<ImageListType>([]);
+  const [images, setImages] = useState<{ data_url: any; file: File }[]>([]);
   const [warningModalOpen, setWarningModalOpen] = useState<boolean>(false);
   const [howToModalOpen, setHowToModalOpen] = useState<boolean>(false);
   const [deleteSideMargin, setDeleteSideMargin] = useState<boolean>(false);
@@ -449,25 +447,22 @@ const Home: NextPage = () => {
   });
   const layout = selectedLayout.id;
 
-  const onChange = (imageList: ImageListType, addUpdateIndex: any) => {
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      setImages(imageList.reverse());
-    } else {
-      setImages(imageList);
-    }
-  };
-
-  useEffect(() => {
-    if (errors) {
-      if (errors.maxNumber) {
-        alert(`設定できる画像は100枚までです。`);
-      } else if (errors.acceptType) {
-        alert('サポートされてないファイルタイプです。');
-      } else if (errors.maxFileSize) {
-        alert('最大サイズを超過しています。');
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      for (const file of acceptedFiles) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.addEventListener('load', () => {
+          setImages((prevState) =>
+            [...prevState, { data_url: reader.result, file: file }].sort(
+              (f1, f2) => f1.file.lastModified - f2.file.lastModified
+            )
+          );
+        });
       }
     }
-  }, [errors]);
+  }, []);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   useEffect(() => {
     document.addEventListener('paste', (e) => {
@@ -731,6 +726,12 @@ const Home: NextPage = () => {
     [images]
   );
 
+  const isAndroid = useMemo(() => {
+    return typeof window !== 'undefined'
+      ? !!navigator.userAgent.match(/Android/)
+      : false;
+  }, []);
+
   const title = 'レシート因子作成くん';
   const description =
     '「ウマ娘詳細」画面の「継承タブ」の複数枚画像を1枚に結合するツールです';
@@ -778,181 +779,165 @@ const Home: NextPage = () => {
       <Script src="https://docs.opencv.org/4.5.5/opencv.js" />
       <WarningModal open={warningModalOpen} setOpen={setWarningModalOpen} />
       <HowtoModal open={howToModalOpen} setOpen={setHowToModalOpen} />
-      <ImageUploading
-        multiple
-        value={images}
-        onChange={onChange}
-        maxNumber={100}
-        dataURLKey="data_url"
-        acceptType={['jpg', 'png', 'jpeg', 'heic']}
-        maxFileSize={10 * 1024 * 1024}
-      >
-        {({
-          imageList,
-          onImageUpload,
-          onImageRemoveAll,
-          onImageUpdate,
-          onImageRemove,
-          isDragging,
-          dragProps,
-          errors,
-        }) => {
-          setErrors(errors);
-          return (
-            <div>
-              <div className="mt-12 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div className="sm:col-span-6">
-                  <label
-                    htmlFor="cover-photo"
-                    className="block text-3xl font-medium text-gray-700 text-center"
-                  >
-                    レシート因子作成くん
-                    <br />
-                    <p
-                      className="text-sm text-gray-500 mt-4"
-                      style={{ lineHeight: '1.4rem' }}
-                    >
-                      <b>「継承画面」「スキル画面」</b>
-                      の画像を1枚に纏めます。
-                      <br />
-                      <a
-                        href="https://kitachan.black/11b8ebd4519e4fca82304b4e4ccf3d9c"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 underline"
-                      >
-                        他画面の作成事例はこちら
-                      </a>
-                    </p>
-                  </label>
-                  <div className="my-4 text-center">
-                    <button
-                      onClick={() => setHowToModalOpen(true)}
-                      type="button"
-                      className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      使い方を表示する
-                    </button>
-                    <button
-                      onClick={() => setWarningModalOpen(true)}
-                      type="button"
-                      className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      注意点を表示する
-                    </button>
-                  </div>
-                  <div
-                    className={classNames(
-                      'mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md',
-                      isDragging ? 'border-blue-300' : 'border-gray-300'
-                    )}
-                    {...dragProps}
-                  >
-                    <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-xm text-gray-600">
-                        <button
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-                          onClick={onImageUpload}
-                          type="button"
-                        >
-                          <span className="text-xs">画像をアップロード</span>
-                        </button>
-                        <p className="pl-1 text-xs mt-1.5">
-                          または ドラッグ&ドロップ
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        もしくは クリップボードからペースト
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG（最大10MBまで）
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {imageList.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex flex-row mb-2">
-                    <label
-                      htmlFor="cover-photo"
-                      className="block text-lg font-medium text-gray-700"
-                    >
-                      プレビュー
-                    </label>
-                    <p className="ml-2">
-                      <button
-                        onClick={onImageRemoveAll}
-                        type="button"
-                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        全削除
-                      </button>
-                    </p>
-                  </div>
-                  <ul
-                    role="list"
-                    className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-3 xl:gap-x-8"
-                  >
-                    {imageList.map((image, index) => (
-                      <li key={index} className="relative">
-                        <div className="group block w-full aspect-w-6 aspect-h-11 rounded-lg bg-gray-100 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-100 focus-within:ring-indigo-500 overflow-hidden">
-                          <img
-                            src={image['data_url']}
-                            alt=""
-                            className="object-contain pointer-events-none group-hover:opacity-75"
-                          />
-                        </div>
-                        <p className="mt-2 block text-sm font-medium text-gray-900 truncate pointer-events-none">
-                          {index + 1}枚目の画像
-                        </p>
-                        <p className="block text-sm font-medium text-gray-500 pointer-events-none">
-                          {Math.round(
-                            ((image.file?.size || 0) / 1024 / 1024) * 10
-                          ) / 10}{' '}
-                          MB
-                        </p>
-                        <p className="text-center">
-                          <button
-                            onClick={() => onImageRemove(index)}
-                            type="button"
-                            className="mx-2 inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                          >
-                            削除
-                          </button>
-                          {index !== imageList.length - 1 && (
-                            <button
-                              onClick={() => onMove(index, 'right')}
-                              type="button"
-                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                              →
-                            </button>
-                          )}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+      <div>
+        <div className="mt-12 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+          <div className="sm:col-span-6">
+            <label
+              htmlFor="cover-photo"
+              className="block text-3xl font-medium text-gray-700 text-center"
+            >
+              レシート因子作成くん
+              <br />
+              <p
+                className="text-sm text-gray-500 mt-4"
+                style={{ lineHeight: '1.4rem' }}
+              >
+                <b>「継承画面」「スキル画面」</b>
+                の画像を1枚に纏めます。
+                <br />
+                <a
+                  href="https://kitachan.black/11b8ebd4519e4fca82304b4e4ccf3d9c"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 underline"
+                >
+                  他画面の作成事例はこちら
+                </a>
+              </p>
+            </label>
+            <div className="my-4 text-center">
+              <button
+                onClick={() => setHowToModalOpen(true)}
+                type="button"
+                className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                使い方を表示する
+              </button>
+              <button
+                onClick={() => setWarningModalOpen(true)}
+                type="button"
+                className="mx-1 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                注意点を表示する
+              </button>
             </div>
-          );
-        }}
-      </ImageUploading>
+            <div
+              className={classNames(
+                'mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md',
+                isDragActive ? 'border-blue-300' : 'border-gray-300'
+              )}
+              {...getRootProps()}
+            >
+              <div className="space-y-1 text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div className="flex text-xm text-gray-600">
+                  <label
+                    htmlFor="file-upload"
+                    className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                  >
+                    <span className="text-sm">画像を選択</span>
+                    <input
+                      {...getInputProps({ multiple: true })}
+                      // accept="image/*"
+                    />
+                  </label>
+                  <p className="pl-1 text-xs mt-1.5">
+                    または ドラッグ&ドロップ
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  もしくは クリップボードからペースト
+                </p>
+                <p className="text-xs text-gray-500">
+                  PNG, JPG（最大10MBまで）
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        {images.length > 0 && (
+          <div className="mt-4">
+            <div className="flex flex-row mb-2">
+              <label
+                htmlFor="cover-photo"
+                className="block text-lg font-medium text-gray-700"
+              >
+                プレビュー
+              </label>
+              <p className="ml-2">
+                <button
+                  onClick={() => setImages([])}
+                  type="button"
+                  className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  全削除
+                </button>
+              </p>
+            </div>
+            <ul
+              role="list"
+              className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-3 xl:gap-x-8"
+            >
+              {images.map((image, index) => (
+                <li key={index} className="relative">
+                  <div className="group block w-full aspect-w-6 aspect-h-11 rounded-lg bg-gray-100 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-100 focus-within:ring-indigo-500 overflow-hidden">
+                    <img
+                      src={image.data_url}
+                      alt=""
+                      className="object-contain pointer-events-none group-hover:opacity-75"
+                    />
+                  </div>
+                  <p className="mt-2 block text-sm font-medium text-gray-900 truncate pointer-events-none">
+                    {index + 1}枚目の画像
+                  </p>
+                  <p className="block text-sm font-medium text-gray-500 pointer-events-none">
+                    {Math.round(((image.file?.size || 0) / 1024 / 1024) * 10) /
+                      10}{' '}
+                    MB
+                  </p>
+                  <p className="text-center">
+                    <button
+                      onClick={() =>
+                        setImages((prevState) =>
+                          prevState.filter(
+                            (s) => s.file.name !== image.file.name
+                          )
+                        )
+                      }
+                      type="button"
+                      className="mx-2 inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      削除
+                    </button>
+                    {index !== images.length - 1 && (
+                      <button
+                        onClick={() => onMove(index, 'right')}
+                        type="button"
+                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        →
+                      </button>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
       <div className="my-6 lg:w-1/3 mx-auto p-6 border-2 border-dashed rounded-md">
         <div className="mx-auto">
           <LayoutCombobox
@@ -991,7 +976,6 @@ const Home: NextPage = () => {
           がっちゃんこする
         </button>
       </div>
-
       <div
         style={{ objectFit: 'contain' }}
         className={classNames(created ? 'my-4' : 'h-0')}
@@ -1070,7 +1054,6 @@ const Home: NextPage = () => {
           )}
         </div>
       </div>
-
       <div className="bg-white">
         <div className="max-w-7xl mx-auto py-12 px-4 text-center sm:px-6 lg:px-8 lg:py-12">
           <div className="space-y-12">
@@ -1164,7 +1147,6 @@ const Home: NextPage = () => {
           </div>
         </div>
       </div>
-
       <footer className="bg-white">
         <div className="max-w-7xl mx-auto py-8 px-4 overflow-hidden sm:px-6 lg:px-8">
           <p className="mt-4 text-center text-base text-gray-400">
